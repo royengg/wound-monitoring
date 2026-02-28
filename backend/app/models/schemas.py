@@ -82,7 +82,6 @@ class AssessmentResult(BaseModel):
     urgency_level: str = "low"                     # low | medium | high
     summary: str = ""
     recommendations: list[str] = []
-    voice_agent_script: Optional[str] = None
     days_post_op: Optional[int] = None
     created_at: str = ""
 

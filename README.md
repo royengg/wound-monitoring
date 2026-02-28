@@ -6,15 +6,12 @@
 
 - Node.js 18+ & npm
 - Python 3.10+
-- AWS account (Bedrock, S3, DynamoDB, Connect access)
+- AWS account (Bedrock, S3, DynamoDB access)
 
 ## AWS Setup
 
-- Create S3 bucket: `photos`
+- Create S3 bucket: `wound-photos`
 - Create DynamoDB tables: `patients` (PK: `patient_id`), `assessments` (PK: `assessment_id`)
-- Enable Bedrock model access: `anthropic.claude-sonnet-4-5-20250929-v1:0`
-- Set up Amazon Connect instance + contact flow
-- Create Lex bot for voice agent intents
 - Fill `.env` with all credentials
 
 ### Frontend (React + Vite)
@@ -45,7 +42,7 @@ uvicorn app.main:app --reload  # → http://localhost:8000/docs
 ├── backend/             # Python FastAPI
 │   └── app/
 │       ├── routers/     # patients.py, assessments.py, voice.py
-│       ├── services/    # s3.py, dynamodb.py, bedrock.py, yolo.py, connect.py
+│       ├── services/    # s3.py, dynamodb.py, bedrock.py, yolo.py
 │       ├── models/      # schemas.py (Pydantic models)
 │       └── config.py    # env-based settings
 │
