@@ -16,6 +16,9 @@ class Settings(BaseSettings):
 
     yolo_model_path: str = "yolov8n.pt"
 
+    elevenlabs_api_key: str = ""
+    elevenlabs_agent_id: str = ""
+
     debug: bool = True
     cors_origins: str = "http://localhost:5173"
 

@@ -1,4 +1,5 @@
 import logging
+import requests
 from fastapi import APIRouter, HTTPException
 from botocore.exceptions import ClientError
 from app.models.schemas import VoiceCallRequest, VoiceCallResponse
@@ -49,10 +50,49 @@ async def trigger_voice_call(data: VoiceCallRequest):
             f"Please upload a photo through the app so I can review your progress."
         )
 
-    # TODO: integrate ElevenLabs Conversational AI API here
-    return VoiceCallResponse(
-        conversation_id="pending_elevenlabs_integration",
-        patient_id=data.patient_id,
-        status="script_ready",
-        message=script,
-    )
+    if not settings.elevenlabs_api_key or not settings.elevenlabs_agent_id:
+        logger.warning("ElevenLabs credentials missing. Returning simulated response.")
+        return VoiceCallResponse(
+            conversation_id="simulated_no_credentials",
+            patient_id=data.patient_id,
+            status="simulated",
+            message=script,
+        )
+
+    headers = {
+        "xi-api-key": settings.elevenlabs_api_key,
+        "Content-Type": "application/json"
+    }
+
+    # Format the phone number to E.164 (ElevenLabs requires this)
+    from app.utils.helpers import format_phone_e164
+    formatted_phone = format_phone_e164(patient.get("phone", ""))
+
+    payload = {
+        "number": formatted_phone,
+        "dynamic_variables": {
+            "patient_name": patient.get("name", "there"),
+            "healing_score": str(latest.get("healing_score", "N/A")) if latest else "N/A",
+            "clinical_summary": latest.get("summary", "") if latest else "No recent photo uploaded."
+        },
+        "system_prompt_override": (
+            f"You are a medical assistant calling a patient post-surgery. "
+            f"Your script/goal for this call is: {script}"
+        )
+    }
+
+    try:
+        url = f"https://api.elevenlabs.io/v1/convai/agents/{settings.elevenlabs_agent_id}/calls"
+        resp = requests.post(url, headers=headers, json=payload, timeout=15)
+        resp.raise_for_status()
+        result = resp.json()
+
+        return VoiceCallResponse(
+            conversation_id=result.get("conversation_id", "unknown"),
+            patient_id=data.patient_id,
+            status="initiated",
+            message=script,
+        )
+    except requests.exceptions.RequestException as e:
+        logger.error("ElevenLabs outbound call failed: %s | Response: %s", str(e), getattr(e.response, "text", ""))
+        raise HTTPException(status_code=502, detail="Failed to trigger voice call via ElevenLabs")

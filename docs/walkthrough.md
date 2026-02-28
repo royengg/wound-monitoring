@@ -126,7 +126,7 @@ Includes `Decimal↔float` converters since DynamoDB returns `Decimal` objects t
 
 | Method | Path | What it does |
 |---|---|---|
-| `POST` | `/api/voice/call` | Fetches patient + latest assessment, builds conversational script, returns it. ElevenLabs API integration is stubbed. |
+| `POST` | `/api/voice/call` | Fetches patient + latest assessment, builds conversational script, and **triggers a live outbound phone call** via the ElevenLabs Conversational AI API (`POST /v1/convai/agents/{agent_id}/calls`). Uses the generated script as the `system_prompt_override`. Falls back to a simulated response if API keys are missing. |
 
 ---
 
