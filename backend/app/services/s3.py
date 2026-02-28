@@ -1,6 +1,5 @@
 import logging
 import boto3
-from io import BytesIO
 from botocore.exceptions import ClientError
 from app.config import get_settings
 
