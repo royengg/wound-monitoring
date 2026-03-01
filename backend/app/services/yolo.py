@@ -17,7 +17,11 @@ def get_model() -> YOLO:
             _model = YOLO(settings.yolo_model_path)
             logger.info("YOLO model loaded from %s", settings.yolo_model_path)
         except Exception as e:
-            logger.error("Failed to load YOLO model from %s: %s", settings.yolo_model_path, str(e))
+            logger.error(
+                "Failed to load YOLO model from %s: %s",
+                settings.yolo_model_path,
+                str(e),
+            )
             raise RuntimeError(f"YOLO model failed to load: {e}")
     return _model
 
@@ -71,7 +75,9 @@ def detect_wound(image_bytes: bytes) -> dict:
 
     logger.info(
         "YOLO detection: %d wound(s) found (conf_threshold=%.2f, best_conf=%.3f)",
-        len(detections), conf_threshold, best_conf,
+        len(detections),
+        conf_threshold,
+        best_conf,
     )
 
     # Crop the highest-confidence detection with 10% padding
@@ -95,7 +101,8 @@ def detect_wound(image_bytes: bytes) -> dict:
             int(crop_box[2] - crop_box[0]),
             int(crop_box[3] - crop_box[1]),
             (cropped.size[0] * cropped.size[1]) / (w * h) * 100,
-            w, h,
+            w,
+            h,
         )
 
     return {

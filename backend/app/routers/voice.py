@@ -24,7 +24,9 @@ async def trigger_voice_call(data: VoiceCallRequest):
     try:
         patient = get_patient(data.patient_id)
     except ClientError:
-        raise HTTPException(status_code=502, detail="Database error while fetching patient")
+        raise HTTPException(
+            status_code=502, detail="Database error while fetching patient"
+        )
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
@@ -32,7 +34,9 @@ async def trigger_voice_call(data: VoiceCallRequest):
     try:
         assessments = get_assessments_by_patient(data.patient_id)
     except ClientError:
-        raise HTTPException(status_code=502, detail="Database error while fetching assessments")
+        raise HTTPException(
+            status_code=502, detail="Database error while fetching assessments"
+        )
 
     latest = assessments[0] if assessments else None
 
@@ -82,8 +86,12 @@ async def trigger_voice_call(data: VoiceCallRequest):
         "language": language,
         "dynamic_variables": {
             "patient_name": patient.get("name", "there"),
-            "healing_score": str(latest.get("healing_score", "N/A")) if latest else "N/A",
-            "clinical_summary": latest.get("summary", "") if latest else "No recent photo uploaded.",
+            "healing_score": str(latest.get("healing_score", "N/A"))
+            if latest
+            else "N/A",
+            "clinical_summary": latest.get("summary", "")
+            if latest
+            else "No recent photo uploaded.",
         },
         "system_prompt_override": (
             f"You are a medical assistant calling a patient post-surgery. "
@@ -110,4 +118,6 @@ async def trigger_voice_call(data: VoiceCallRequest):
             str(e),
             getattr(e.response, "text", ""),
         )
-        raise HTTPException(status_code=502, detail="Failed to trigger voice call via ElevenLabs")
+        raise HTTPException(
+            status_code=502, detail="Failed to trigger voice call via ElevenLabs"
+        )

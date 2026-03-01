@@ -41,6 +41,7 @@ class PatientUpdate(BaseModel):
 
 class BoundingBox(BaseModel):
     """DFUC annotation format"""
+
     xmin: float
     ymin: float
     xmax: float
@@ -76,10 +77,12 @@ class AssessmentResult(BaseModel):
 
     healing_score: float = Field(0, ge=0, le=10)
     pwat_scores: Optional[PWATScores] = None
-    infection_status: Optional[str] = None        # none | infection | ischemia | both
-    tissue_types: list[str] = []                   # granulation, epithelialization, slough, necrosis, fibrin
+    infection_status: Optional[str] = None  # none | infection | ischemia | both
+    tissue_types: list[
+        str
+    ] = []  # granulation, epithelialization, slough, necrosis, fibrin
     anomalies: list[str] = []
-    urgency_level: str = "low"                     # low | medium | high
+    urgency_level: str = "low"  # low | medium | high
     summary: str = ""
     recommendations: list[str] = []
     voice_agent_script: Optional[str] = None

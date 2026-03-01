@@ -89,12 +89,12 @@ def assess_wound(
     image_b64 = base64.b64encode(image_bytes).decode("utf-8")
 
     user_message = f"""Patient context:
-- Name: {patient_context.get('name', 'Unknown')}
-- Age: {patient_context.get('age', 'Unknown')}
-- Surgery type: {patient_context.get('surgery_type', 'Unknown')}
-- Days post-op: {patient_context.get('days_post_op', 'Unknown')}
-- Wound location: {patient_context.get('wound_location', 'Unknown')}
-- Risk factors: {', '.join(patient_context.get('risk_factors', [])) or 'None'}"""
+- Name: {patient_context.get("name", "Unknown")}
+- Age: {patient_context.get("age", "Unknown")}
+- Surgery type: {patient_context.get("surgery_type", "Unknown")}
+- Days post-op: {patient_context.get("days_post_op", "Unknown")}
+- Wound location: {patient_context.get("wound_location", "Unknown")}
+- Risk factors: {", ".join(patient_context.get("risk_factors", [])) or "None"}"""
 
     if not wound_detected:
         user_message += """
@@ -111,35 +111,39 @@ Please analyze the full image as best you can. If you cannot identify a wound, s
                 f"score {entry.get('healing_score', '?')}/10 "
                 f"({entry.get('date', 'unknown date')})"
             )
-        user_message += "\n\nPrevious healing scores (newest first):\n" + "\n".join(history_lines)
+        user_message += "\n\nPrevious healing scores (newest first):\n" + "\n".join(
+            history_lines
+        )
 
     user_message += "\n\nPlease analyze the attached wound photograph and provide your structured assessment."
 
-    body = json.dumps({
-        "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 2048,
-        "temperature": 0.1,  # Low temperature for consistent, reproducible scores
-        "system": SYSTEM_PROMPT,
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "image/jpeg",
-                            "data": image_b64,
+    body = json.dumps(
+        {
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": 2048,
+            "temperature": 0.1,  # Low temperature for consistent, reproducible scores
+            "system": SYSTEM_PROMPT,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/jpeg",
+                                "data": image_b64,
+                            },
                         },
-                    },
-                    {
-                        "type": "text",
-                        "text": user_message,
-                    },
-                ],
-            }
-        ],
-    })
+                        {
+                            "type": "text",
+                            "text": user_message,
+                        },
+                    ],
+                }
+            ],
+        }
+    )
 
     # Invoke Bedrock with retry on transient errors
     max_retries = 2
@@ -159,13 +163,18 @@ Please analyze the full image as best you can. If you cannot identify a wound, s
             break
         except ClientError as e:
             error_code = e.response["Error"].get("Code", "")
-            if error_code in ("ThrottlingException", "ServiceUnavailableException") and attempt < max_retries:
-                wait = 2 ** attempt
+            if (
+                error_code in ("ThrottlingException", "ServiceUnavailableException")
+                and attempt < max_retries
+            ):
+                wait = 2**attempt
                 logger.warning("Bedrock %s, retrying in %ds...", error_code, wait)
                 time.sleep(wait)
                 last_error = e
                 continue
-            logger.error("Bedrock invocation failed: %s", e.response["Error"]["Message"])
+            logger.error(
+                "Bedrock invocation failed: %s", e.response["Error"]["Message"]
+            )
             raise
         except Exception as e:
             logger.error("Unexpected error calling Bedrock: %s", str(e))
@@ -220,14 +229,16 @@ def _parse_json_response(text: str) -> dict:
             pass
 
     logger.error("Failed to parse Bedrock JSON. Raw (first 500 chars): %.500s", text)
-    raise ValueError(f"Bedrock model returned unparseable JSON")
+    raise ValueError("Bedrock model returned unparseable JSON")
 
 
 def _validate_assessment(data: dict) -> dict:
     """Validate and fix common issues in the assessment JSON."""
     # Clamp healing_score to 0-10
     if "healing_score" in data:
-        data["healing_score"] = round(max(0.0, min(10.0, float(data["healing_score"]))), 1)
+        data["healing_score"] = round(
+            max(0.0, min(10.0, float(data["healing_score"]))), 1
+        )
 
     # Ensure urgency_level is valid
     valid_urgency = {"low", "medium", "high"}
@@ -247,9 +258,13 @@ def _validate_assessment(data: dict) -> dict:
     if "pwat_scores" in data and isinstance(data["pwat_scores"], dict):
         pwat = data["pwat_scores"]
         pwat_limits = {
-            "size": 4, "depth": 4, "necrotic_tissue_type": 4,
-            "necrotic_tissue_amount": 4, "granulation_tissue_type": 4,
-            "granulation_tissue_amount": 4, "edges": 4,
+            "size": 4,
+            "depth": 4,
+            "necrotic_tissue_type": 4,
+            "necrotic_tissue_amount": 4,
+            "granulation_tissue_type": 4,
+            "granulation_tissue_amount": 4,
+            "edges": 4,
             "periulcer_skin_viability": 2,
         }
         for field, max_val in pwat_limits.items():

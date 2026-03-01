@@ -4,7 +4,7 @@ from botocore.exceptions import ClientError
 from datetime import datetime
 import uuid
 from decimal import Decimal
-from app.models.schemas import AssessmentResult, YoloResult, PWATScores
+from app.models.schemas import AssessmentResult
 from app.services.s3 import upload_image, get_presigned_url
 from app.services.yolo import detect_wound
 from app.services.bedrock import assess_wound
@@ -54,7 +54,9 @@ async def upload_and_assess(
     try:
         patient = get_patient(patient_id)
     except ClientError:
-        raise HTTPException(status_code=502, detail="Database error while fetching patient")
+        raise HTTPException(
+            status_code=502, detail="Database error while fetching patient"
+        )
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
@@ -82,20 +84,26 @@ async def upload_and_assess(
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         logger.error("YOLO detection error: %s", str(e))
-        raise HTTPException(status_code=503, detail="Wound detection service unavailable")
+        raise HTTPException(
+            status_code=503, detail="Wound detection service unavailable"
+        )
 
     # 5. Gather previous assessment scores for trend analysis
     previous_scores = []
     try:
         past_assessments = get_assessments_by_patient(patient_id)
         for past in past_assessments[:5]:  # 5 most recent, already sorted newest-first
-            previous_scores.append({
-                "date": past.get("created_at", ""),
-                "healing_score": float(past.get("healing_score", 0)),
-                "days_post_op": int(past.get("days_post_op", 0)),
-            })
+            previous_scores.append(
+                {
+                    "date": past.get("created_at", ""),
+                    "healing_score": float(past.get("healing_score", 0)),
+                    "days_post_op": int(past.get("days_post_op", 0)),
+                }
+            )
     except ClientError:
-        logger.warning("Could not fetch previous assessments for trend context — continuing without")
+        logger.warning(
+            "Could not fetch previous assessments for trend context — continuing without"
+        )
 
     # 6. Send to Bedrock for assessment
     wound_detected = yolo_result.get("has_wound", False) if yolo_result else False
@@ -113,7 +121,9 @@ async def upload_and_assess(
         "surgery_date": patient.get("surgery_date"),
         "wound_location": patient.get("wound_location"),
         "risk_factors": patient.get("risk_factors", []),
-        "days_post_op": days_since(patient.get("surgery_date", datetime.utcnow().date().isoformat())),
+        "days_post_op": days_since(
+            patient.get("surgery_date", datetime.utcnow().date().isoformat())
+        ),
     }
 
     try:
@@ -127,7 +137,9 @@ async def upload_and_assess(
         raise HTTPException(status_code=502, detail="AI assessment service error")
     except ValueError as e:
         logger.error("Bedrock response parsing error: %s", str(e))
-        raise HTTPException(status_code=502, detail="AI assessment returned invalid data")
+        raise HTTPException(
+            status_code=502, detail="AI assessment returned invalid data"
+        )
 
     # 7. Build assessment record
     assessment_id = str(uuid.uuid4())
@@ -155,7 +167,9 @@ async def upload_and_assess(
     try:
         put_assessment(_float_to_decimal(assessment))
     except ClientError:
-        raise HTTPException(status_code=502, detail="Database error while saving assessment")
+        raise HTTPException(
+            status_code=502, detail="Database error while saving assessment"
+        )
 
     # 9. Alert clinician via SNS if urgency is high
     if assessment["urgency_level"] == "high":
@@ -169,7 +183,9 @@ async def get_patient_assessments(patient_id: str):
     try:
         items = get_assessments_by_patient(patient_id)
     except ClientError:
-        raise HTTPException(status_code=502, detail="Database error while fetching assessments")
+        raise HTTPException(
+            status_code=502, detail="Database error while fetching assessments"
+        )
     return [_decimal_to_float(item) for item in items]
 
 
@@ -178,7 +194,9 @@ async def get_assessment_detail(assessment_id: str):
     try:
         assessment = get_assessment(assessment_id)
     except ClientError:
-        raise HTTPException(status_code=502, detail="Database error while fetching assessment")
+        raise HTTPException(
+            status_code=502, detail="Database error while fetching assessment"
+        )
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
     return _decimal_to_float(assessment)
@@ -189,10 +207,14 @@ async def delete_assessment_by_id(assessment_id: str):
     try:
         existing = get_assessment(assessment_id)
     except ClientError:
-        raise HTTPException(status_code=502, detail="Database error while fetching assessment")
+        raise HTTPException(
+            status_code=502, detail="Database error while fetching assessment"
+        )
     if not existing:
         raise HTTPException(status_code=404, detail="Assessment not found")
     try:
         delete_assessment(assessment_id)
     except ClientError:
-        raise HTTPException(status_code=502, detail="Database error while deleting assessment")
+        raise HTTPException(
+            status_code=502, detail="Database error while deleting assessment"
+        )
