@@ -1,6 +1,6 @@
 import logging
 import boto3
-from boto3.dynamodb.conditions import Key, Attr
+from boto3.dynamodb.conditions import Attr
 from botocore.exceptions import ClientError
 from app.config import get_settings
 
@@ -19,12 +19,17 @@ assessments_table = dynamodb.Table(settings.dynamodb_assessments_table)
 
 # ── Patients ──────────────────────────────────────────
 
+
 def put_patient(patient: dict) -> dict:
     try:
         patients_table.put_item(Item=patient)
         return patient
     except ClientError as e:
-        logger.error("Failed to create patient %s: %s", patient.get("patient_id"), e.response["Error"]["Message"])
+        logger.error(
+            "Failed to create patient %s: %s",
+            patient.get("patient_id"),
+            e.response["Error"]["Message"],
+        )
         raise
 
 
@@ -33,7 +38,9 @@ def get_patient(patient_id: str) -> dict | None:
         resp = patients_table.get_item(Key={"patient_id": patient_id})
         return resp.get("Item")
     except ClientError as e:
-        logger.error("Failed to get patient %s: %s", patient_id, e.response["Error"]["Message"])
+        logger.error(
+            "Failed to get patient %s: %s", patient_id, e.response["Error"]["Message"]
+        )
         raise
 
 
@@ -71,7 +78,11 @@ def update_patient(patient_id: str, updates: dict) -> dict:
         )
         return resp["Attributes"]
     except ClientError as e:
-        logger.error("Failed to update patient %s: %s", patient_id, e.response["Error"]["Message"])
+        logger.error(
+            "Failed to update patient %s: %s",
+            patient_id,
+            e.response["Error"]["Message"],
+        )
         raise
 
 
@@ -79,18 +90,27 @@ def delete_patient(patient_id: str) -> None:
     try:
         patients_table.delete_item(Key={"patient_id": patient_id})
     except ClientError as e:
-        logger.error("Failed to delete patient %s: %s", patient_id, e.response["Error"]["Message"])
+        logger.error(
+            "Failed to delete patient %s: %s",
+            patient_id,
+            e.response["Error"]["Message"],
+        )
         raise
 
 
 # ── Assessments ───────────────────────────────────────
+
 
 def put_assessment(assessment: dict) -> dict:
     try:
         assessments_table.put_item(Item=assessment)
         return assessment
     except ClientError as e:
-        logger.error("Failed to create assessment %s: %s", assessment.get("assessment_id"), e.response["Error"]["Message"])
+        logger.error(
+            "Failed to create assessment %s: %s",
+            assessment.get("assessment_id"),
+            e.response["Error"]["Message"],
+        )
         raise
 
 
@@ -111,7 +131,11 @@ def get_assessments_by_patient(patient_id: str) -> list[dict]:
         items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
         return items
     except ClientError as e:
-        logger.error("Failed to get assessments for patient %s: %s", patient_id, e.response["Error"]["Message"])
+        logger.error(
+            "Failed to get assessments for patient %s: %s",
+            patient_id,
+            e.response["Error"]["Message"],
+        )
         raise
 
 
@@ -120,7 +144,11 @@ def get_assessment(assessment_id: str) -> dict | None:
         resp = assessments_table.get_item(Key={"assessment_id": assessment_id})
         return resp.get("Item")
     except ClientError as e:
-        logger.error("Failed to get assessment %s: %s", assessment_id, e.response["Error"]["Message"])
+        logger.error(
+            "Failed to get assessment %s: %s",
+            assessment_id,
+            e.response["Error"]["Message"],
+        )
         raise
 
 
@@ -128,5 +156,9 @@ def delete_assessment(assessment_id: str) -> None:
     try:
         assessments_table.delete_item(Key={"assessment_id": assessment_id})
     except ClientError as e:
-        logger.error("Failed to delete assessment %s: %s", assessment_id, e.response["Error"]["Message"])
+        logger.error(
+            "Failed to delete assessment %s: %s",
+            assessment_id,
+            e.response["Error"]["Message"],
+        )
         raise

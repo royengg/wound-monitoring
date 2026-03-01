@@ -40,7 +40,11 @@ def get_presigned_url(key: str, expires_in: int = 3600) -> str:
         )
         return url
     except ClientError as e:
-        logger.error("Failed to generate presigned URL for %s: %s", key, e.response["Error"]["Message"])
+        logger.error(
+            "Failed to generate presigned URL for %s: %s",
+            key,
+            e.response["Error"]["Message"],
+        )
         raise
 
 
@@ -50,5 +54,7 @@ def download_image(key: str) -> bytes:
         resp = s3_client.get_object(Bucket=settings.s3_bucket_name, Key=key)
         return resp["Body"].read()
     except ClientError as e:
-        logger.error("S3 download failed for %s: %s", key, e.response["Error"]["Message"])
+        logger.error(
+            "S3 download failed for %s: %s", key, e.response["Error"]["Message"]
+        )
         raise

@@ -4,7 +4,13 @@ from botocore.exceptions import ClientError
 from datetime import datetime
 import uuid
 from app.models.schemas import PatientCreate, Patient, PatientUpdate
-from app.services.dynamodb import put_patient, get_patient, get_all_patients, update_patient, delete_patient
+from app.services.dynamodb import (
+    put_patient,
+    get_patient,
+    get_all_patients,
+    update_patient,
+    delete_patient,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +27,9 @@ async def create_patient(data: PatientCreate):
     try:
         put_patient(patient)
     except ClientError:
-        raise HTTPException(status_code=502, detail="Database error while creating patient")
+        raise HTTPException(
+            status_code=502, detail="Database error while creating patient"
+        )
     return patient
 
 
@@ -30,7 +38,9 @@ async def list_patients():
     try:
         return get_all_patients()
     except ClientError:
-        raise HTTPException(status_code=502, detail="Database error while listing patients")
+        raise HTTPException(
+            status_code=502, detail="Database error while listing patients"
+        )
 
 
 @router.get("/{patient_id}", response_model=Patient)
@@ -38,7 +48,9 @@ async def get_patient_by_id(patient_id: str):
     try:
         patient = get_patient(patient_id)
     except ClientError:
-        raise HTTPException(status_code=502, detail="Database error while fetching patient")
+        raise HTTPException(
+            status_code=502, detail="Database error while fetching patient"
+        )
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     return patient
@@ -49,7 +61,9 @@ async def update_patient_by_id(patient_id: str, data: PatientUpdate):
     try:
         existing = get_patient(patient_id)
     except ClientError:
-        raise HTTPException(status_code=502, detail="Database error while fetching patient")
+        raise HTTPException(
+            status_code=502, detail="Database error while fetching patient"
+        )
     if not existing:
         raise HTTPException(status_code=404, detail="Patient not found")
 
@@ -60,7 +74,9 @@ async def update_patient_by_id(patient_id: str, data: PatientUpdate):
     try:
         updated = update_patient(patient_id, updates)
     except ClientError:
-        raise HTTPException(status_code=502, detail="Database error while updating patient")
+        raise HTTPException(
+            status_code=502, detail="Database error while updating patient"
+        )
     return updated
 
 
@@ -69,10 +85,14 @@ async def delete_patient_by_id(patient_id: str):
     try:
         existing = get_patient(patient_id)
     except ClientError:
-        raise HTTPException(status_code=502, detail="Database error while fetching patient")
+        raise HTTPException(
+            status_code=502, detail="Database error while fetching patient"
+        )
     if not existing:
         raise HTTPException(status_code=404, detail="Patient not found")
     try:
         delete_patient(patient_id)
     except ClientError:
-        raise HTTPException(status_code=502, detail="Database error while deleting patient")
+        raise HTTPException(
+            status_code=502, detail="Database error while deleting patient"
+        )
