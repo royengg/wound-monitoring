@@ -98,9 +98,10 @@ async def upload_and_assess(
         logger.warning("Could not fetch previous assessments for trend context — continuing without")
 
     # 6. Send to Bedrock for assessment
+    wound_detected = yolo_result.get("has_wound", False) if yolo_result else False
     assessment_image = (
         yolo_result.get("cropped_image_bytes", file_bytes)
-        if yolo_result and yolo_result.get("has_wound")
+        if wound_detected
         else file_bytes
     )
 
@@ -116,7 +117,12 @@ async def upload_and_assess(
     }
 
     try:
-        bedrock_result = assess_wound(assessment_image, patient_context, previous_scores=previous_scores or None)
+        bedrock_result = assess_wound(
+            assessment_image,
+            patient_context,
+            previous_scores=previous_scores or None,
+            wound_detected=wound_detected,
+        )
     except ClientError:
         raise HTTPException(status_code=502, detail="AI assessment service error")
     except ValueError as e:
