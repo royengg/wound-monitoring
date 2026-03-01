@@ -26,6 +26,9 @@ def detect_wound(image_bytes: bytes) -> dict:
     """
     Run YOLO inference on image bytes.
     Returns: { detections: [BoundingBox], cropped_image_bytes: bytes|None, has_wound: bool }
+
+    Uses confidence threshold from settings (YOLO_CONFIDENCE_THRESHOLD env var).
+    When no wound is detected, returns has_wound=False with no crop.
     """
     try:
         image = Image.open(BytesIO(image_bytes)).convert("RGB")
@@ -33,9 +36,11 @@ def detect_wound(image_bytes: bytes) -> dict:
         logger.error("Failed to open image for YOLO detection: %s", str(e))
         raise ValueError(f"Invalid image data: {e}")
 
+    conf_threshold = settings.yolo_confidence_threshold
+
     try:
         model = get_model()
-        results = model(image, verbose=False)
+        results = model(image, verbose=False, conf=conf_threshold)
     except RuntimeError:
         raise
     except Exception as e:
@@ -56,7 +61,7 @@ def detect_wound(image_bytes: bytes) -> dict:
                 "ymin": coords[1],
                 "xmax": coords[2],
                 "ymax": coords[3],
-                "confidence": conf,
+                "confidence": round(conf, 4),
                 "label": label,
             }
             detections.append(det)
@@ -64,12 +69,17 @@ def detect_wound(image_bytes: bytes) -> dict:
                 best_conf = conf
                 best_box = coords
 
-    # crop the highest-confidence detection with 10% padding
+    logger.info(
+        "YOLO detection: %d wound(s) found (conf_threshold=%.2f, best_conf=%.3f)",
+        len(detections), conf_threshold, best_conf,
+    )
+
+    # Crop the highest-confidence detection with 10% padding
     cropped_bytes = None
     if best_box:
         w, h = image.size
-        pad_x = (best_box[2] - best_box[0]) * 0.1
-        pad_y = (best_box[3] - best_box[1]) * 0.1
+        pad_x = (best_box[2] - best_box[0]) * 0.10
+        pad_y = (best_box[3] - best_box[1]) * 0.10
         crop_box = (
             max(0, best_box[0] - pad_x),
             max(0, best_box[1] - pad_y),
@@ -78,8 +88,15 @@ def detect_wound(image_bytes: bytes) -> dict:
         )
         cropped = image.crop(crop_box)
         buf = BytesIO()
-        cropped.save(buf, format="JPEG")
+        cropped.save(buf, format="JPEG", quality=90)
         cropped_bytes = buf.getvalue()
+        logger.info(
+            "Wound cropped: %dx%d (%.1f%% of original %dx%d)",
+            int(crop_box[2] - crop_box[0]),
+            int(crop_box[3] - crop_box[1]),
+            (cropped.size[0] * cropped.size[1]) / (w * h) * 100,
+            w, h,
+        )
 
     return {
         "detections": detections,

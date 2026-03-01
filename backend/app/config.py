@@ -14,7 +14,8 @@ class Settings(BaseSettings):
 
     bedrock_model_id: str = "anthropic.claude-sonnet-4-5-20250929-v1:0"
 
-    yolo_model_path: str = "yolov8n.pt"
+    yolo_model_path: str = "wound_yolov8n.pt"
+    yolo_confidence_threshold: float = 0.25
 
     elevenlabs_api_key: str = ""
     elevenlabs_agent_id: str = ""
