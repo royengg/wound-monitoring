@@ -115,14 +115,14 @@ export default function UploadAssessmentPage() {
                   />
                 </label>
               ) : (
-                <div className="relative w-full rounded-lg overflow-hidden border border-border group bg-black/5 flex items-center justify-center min-h-64">
+                <div className="relative w-full rounded-lg overflow-hidden border border-border group bg-muted/50 flex items-center justify-center min-h-64">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={previewUrl}
                     alt="Preview"
                     className="max-h-80 object-contain"
                   />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <div className="absolute inset-0 bg-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <label htmlFor="replace-file" className="cursor-pointer">
                       <Button
                         variant="secondary"

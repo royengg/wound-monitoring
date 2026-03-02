@@ -91,9 +91,9 @@ export default function DashboardPage() {
 
   const getStatusColor = (patientId: string) => {
     const urgency = urgencyByPatient[patientId];
-    if (urgency === "high") return "bg-red-500";
-    if (urgency === "medium") return "bg-yellow-500";
-    if (urgency === "low") return "bg-green-500";
+    if (urgency === "high") return "bg-destructive";
+    if (urgency === "medium") return "bg-chart-1";
+    if (urgency === "low") return "bg-chart-4";
     return "bg-muted-foreground/30"; // no assessment yet
   };
 

@@ -252,7 +252,7 @@ export default function PatientHomePage() {
                     <Skeleton className="h-6 w-16" />
                   </div>
                 </div>
-              )               : latestAssessment ? (
+              ) : latestAssessment ? (
                 <div className="space-y-6">
                   {/* Wound Image */}
                   {latestAssessment.image_url && (
@@ -261,7 +261,7 @@ export default function PatientHomePage() {
                         <ImageIcon className="h-4 w-4" />
                         Wound Photo
                       </span>
-                      <div className="rounded-lg overflow-hidden border border-border bg-black/5 flex items-center justify-center">
+                      <div className="rounded-lg overflow-hidden border border-border bg-muted/50 flex items-center justify-center">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={latestAssessment.image_url}
@@ -381,14 +381,55 @@ export default function PatientHomePage() {
                       </span>
                       <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                         {[
-                          { label: "Size", value: latestAssessment.pwat_scores.size, max: 4 },
-                          { label: "Depth", value: latestAssessment.pwat_scores.depth, max: 4 },
-                          { label: "Necrotic Tissue Type", value: latestAssessment.pwat_scores.necrotic_tissue_type, max: 4 },
-                          { label: "Necrotic Tissue Amount", value: latestAssessment.pwat_scores.necrotic_tissue_amount, max: 4 },
-                          { label: "Granulation Type", value: latestAssessment.pwat_scores.granulation_tissue_type, max: 4 },
-                          { label: "Granulation Amount", value: latestAssessment.pwat_scores.granulation_tissue_amount, max: 4 },
-                          { label: "Edges", value: latestAssessment.pwat_scores.edges, max: 4 },
-                          { label: "Periulcer Skin", value: latestAssessment.pwat_scores.periulcer_skin_viability, max: 2 },
+                          {
+                            label: "Size",
+                            value: latestAssessment.pwat_scores.size,
+                            max: 4,
+                          },
+                          {
+                            label: "Depth",
+                            value: latestAssessment.pwat_scores.depth,
+                            max: 4,
+                          },
+                          {
+                            label: "Necrotic Tissue Type",
+                            value:
+                              latestAssessment.pwat_scores.necrotic_tissue_type,
+                            max: 4,
+                          },
+                          {
+                            label: "Necrotic Tissue Amount",
+                            value:
+                              latestAssessment.pwat_scores
+                                .necrotic_tissue_amount,
+                            max: 4,
+                          },
+                          {
+                            label: "Granulation Type",
+                            value:
+                              latestAssessment.pwat_scores
+                                .granulation_tissue_type,
+                            max: 4,
+                          },
+                          {
+                            label: "Granulation Amount",
+                            value:
+                              latestAssessment.pwat_scores
+                                .granulation_tissue_amount,
+                            max: 4,
+                          },
+                          {
+                            label: "Edges",
+                            value: latestAssessment.pwat_scores.edges,
+                            max: 4,
+                          },
+                          {
+                            label: "Periulcer Skin",
+                            value:
+                              latestAssessment.pwat_scores
+                                .periulcer_skin_viability,
+                            max: 2,
+                          },
                         ].map((item) => (
                           <div
                             key={item.label}

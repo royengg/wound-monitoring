@@ -196,7 +196,7 @@ export default function PatientTimelinePage() {
                   <CardContent className="pb-4">
                     {/* Wound Image */}
                     {assessment.image_url && (
-                      <div className="mb-4 rounded-lg overflow-hidden border border-border bg-black/5 flex items-center justify-center">
+                      <div className="mb-4 rounded-lg overflow-hidden border border-border bg-muted/50 flex items-center justify-center">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={assessment.image_url}
