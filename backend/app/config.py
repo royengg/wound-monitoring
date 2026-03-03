@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     elevenlabs_api_key: str = ""
     elevenlabs_agent_id: str = ""
+    elevenlabs_agent_phone_number_id: str = ""
 
     sns_alert_topic_arn: str = ""
 

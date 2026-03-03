@@ -63,7 +63,11 @@ async def trigger_voice_call(data: VoiceCallRequest):
         )
 
     # ── Guard: return simulated response when ElevenLabs isn't configured ──
-    if not settings.elevenlabs_api_key or not settings.elevenlabs_agent_id:
+    if (
+        not settings.elevenlabs_api_key
+        or not settings.elevenlabs_agent_id
+        or not settings.elevenlabs_agent_phone_number_id
+    ):
         logger.warning("ElevenLabs credentials missing. Returning simulated response.")
         return VoiceCallResponse(
             conversation_id="simulated_no_credentials",
@@ -82,26 +86,37 @@ async def trigger_voice_call(data: VoiceCallRequest):
     language = patient.get("language_preference", "hi-IN")
 
     payload = {
-        "number": formatted_phone,
-        "language": language,
-        "dynamic_variables": {
-            "patient_name": patient.get("name", "there"),
-            "healing_score": str(latest.get("healing_score", "N/A"))
-            if latest
-            else "N/A",
-            "clinical_summary": latest.get("summary", "")
-            if latest
-            else "No recent photo uploaded.",
+        "agent_id": settings.elevenlabs_agent_id,
+        "agent_phone_number_id": settings.elevenlabs_agent_phone_number_id,
+        "to_number": formatted_phone,
+        "conversation_initiation_client_data": {
+            "conversation_config_override": {
+                "agent": {
+                    "prompt": {
+                        "prompt": (
+                            f"You are a medical assistant calling a patient post-surgery. "
+                            f"Speak in the language matching locale '{language}'. "
+                            f"Your script/goal for this call is: {script}"
+                        ),
+                    },
+                    "first_message": f"Hi {patient.get('name', 'there')}, this is your wound care assistant.",
+                    "language": language,
+                },
+            },
+            "dynamic_data": {
+                "patient_name": patient.get("name", "there"),
+                "healing_score": str(latest.get("healing_score", "N/A"))
+                if latest
+                else "N/A",
+                "clinical_summary": latest.get("summary", "")
+                if latest
+                else "No recent photo uploaded.",
+            },
         },
-        "system_prompt_override": (
-            f"You are a medical assistant calling a patient post-surgery. "
-            f"Speak in the language matching locale '{language}'. "
-            f"Your script/goal for this call is: {script}"
-        ),
     }
 
     try:
-        url = f"https://api.elevenlabs.io/v1/convai/agents/{settings.elevenlabs_agent_id}/calls"
+        url = "https://api.elevenlabs.io/v1/convai/sip-trunk/outbound-call"
         resp = requests.post(url, headers=headers, json=payload, timeout=15)
         resp.raise_for_status()
         result = resp.json()
