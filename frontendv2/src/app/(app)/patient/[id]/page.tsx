@@ -4,12 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { getPatient, getAssessments, triggerVoiceCall } from "@/lib/api";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import {
-  formatDistanceToNow,
-  format,
-  differenceInDays,
-  parseISO,
-} from "date-fns";
+import { format } from "date-fns";
 import {
   AlertCircle,
   ArrowLeft,
@@ -22,6 +17,9 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UrgencyText } from "@/components/urgency-badge";
+import { WoundImage } from "@/components/wound-image";
+import { timeAgo, getDaysPostOp } from "@/lib/date-utils";
 
 export default function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -183,7 +181,27 @@ export default function PatientDetailPage() {
             <Skeleton className="mt-3 h-10 w-14" />
           ) : (
             <p className="mt-3 text-4xl font-semibold tracking-tighter font-mono">
-              <DaysPostOpValue date={patient?.surgery_date} />
+              {(() => {
+                const postOp = getDaysPostOp(patient?.surgery_date);
+                if (postOp.type === "unknown") return "\u2014";
+                if (postOp.type === "today")
+                  return (
+                    <>
+                      0
+                      <span className="text-lg font-normal text-muted-foreground ml-0.5">
+                        today
+                      </span>
+                    </>
+                  );
+                return (
+                  <>
+                    {postOp.days}
+                    <span className="text-lg font-normal text-muted-foreground ml-0.5">
+                      {postOp.type === "pre-op" ? "d pre-op" : "d"}
+                    </span>
+                  </>
+                );
+              })()}
             </p>
           )}
           <p className="mt-1.5 text-xs text-muted-foreground">
@@ -267,10 +285,7 @@ export default function PatientDetailPage() {
             </p>
             {latestAssessment && (
               <p className="text-xs text-muted-foreground">
-                {formatDistanceToNow(
-                  new Date(latestAssessment.created_at),
-                  { addSuffix: true },
-                )}
+                {timeAgo(latestAssessment.created_at)}
               </p>
             )}
           </div>
@@ -292,8 +307,7 @@ export default function PatientDetailPage() {
                 <>
                   <div className="p-6">
                     <div className="rounded-lg overflow-hidden border border-border bg-muted/30 flex items-center justify-center">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                      <WoundImage
                         src={latestAssessment.image_url}
                         alt="Latest wound assessment"
                         className="max-h-72 object-contain w-full"
@@ -344,8 +358,11 @@ export default function PatientDetailPage() {
           ) : (
             /* Empty state */
             <div className="border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center py-12 text-center">
-              <UploadCloud className="h-8 w-8 text-muted-foreground/60 mb-3" />
-              <p className="text-sm text-muted-foreground mb-4">
+              <UploadCloud className="h-8 w-8 text-muted-foreground/50 mb-3" />
+              <p className="text-base font-medium text-foreground">
+                No assessment yet
+              </p>
+              <p className="text-sm text-muted-foreground mt-1 mb-4">
                 Upload the first wound photo to generate an AI assessment.
               </p>
               <Button asChild variant="outline" size="sm">
@@ -489,27 +506,6 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function UrgencyText({ level }: { level: string }) {
-  const config: Record<string, { className: string; label: string }> = {
-    high: { className: "text-destructive", label: "High" },
-    medium: { className: "text-foreground", label: "Medium" },
-    low: { className: "text-muted-foreground", label: "Low" },
-  };
-
-  const { className, label } = config[level] ?? {
-    className: "text-muted-foreground",
-    label: "Unknown",
-  };
-
-  return (
-    <p
-      className={`mt-3 text-4xl font-semibold tracking-tighter font-mono ${className}`}
-    >
-      {label}
-    </p>
-  );
-}
-
 function InfectionBadge({ status }: { status?: string | null }) {
   const isInfected = status && status !== "none";
   return (
@@ -523,39 +519,4 @@ function InfectionBadge({ status }: { status?: string | null }) {
       {status || "Unknown"}
     </span>
   );
-}
-
-function DaysPostOpValue({ date }: { date?: string }) {
-  if (!date) return <>{"\u2014"}</>;
-  try {
-    const days = differenceInDays(new Date(), parseISO(date));
-    if (days < 0)
-      return (
-        <>
-          {Math.abs(days)}
-          <span className="text-lg font-normal text-muted-foreground ml-0.5">
-            d pre-op
-          </span>
-        </>
-      );
-    if (days === 0)
-      return (
-        <>
-          0
-          <span className="text-lg font-normal text-muted-foreground ml-0.5">
-            today
-          </span>
-        </>
-      );
-    return (
-      <>
-        {days}
-        <span className="text-lg font-normal text-muted-foreground ml-0.5">
-          d
-        </span>
-      </>
-    );
-  } catch {
-    return <>{"\u2014"}</>;
-  }
 }

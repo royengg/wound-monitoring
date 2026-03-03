@@ -10,6 +10,8 @@ import { getAssessments, getPatient } from "@/lib/api";
 import type { AssessmentResult } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UrgencyBadge } from "@/components/urgency-badge";
+import { WoundImage } from "@/components/wound-image";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import {
   type ChartConfig,
@@ -45,7 +47,7 @@ export default function PatientTimelinePage() {
   // Chart data: chronological order (oldest first)
   const chartData = assessments
     ? [...assessments].reverse().map((a) => ({
-        date: format(new Date(a.created_at), "MMM d"),
+        date: format(parseISO(a.created_at), "MMM d"),
         score: a.healing_score,
       }))
     : [];
@@ -56,11 +58,11 @@ export default function PatientTimelinePage() {
     if (!assessments || assessments.length < 2) return null;
     const sorted = [...assessments].sort(
       (a, b) =>
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+        parseISO(a.created_at).getTime() - parseISO(b.created_at).getTime(),
     );
     return differenceInDays(
-      new Date(sorted[sorted.length - 1].created_at),
-      new Date(sorted[0].created_at),
+      parseISO(sorted[sorted.length - 1].created_at),
+      parseISO(sorted[0].created_at),
     );
   })();
 
@@ -280,7 +282,7 @@ function TimelineEntry({
   isLatest: boolean;
 }) {
   const dateStr = format(
-    new Date(assessment.created_at),
+    parseISO(assessment.created_at),
     "MMMM d, yyyy 'at' h:mm a",
   );
 
@@ -326,10 +328,9 @@ function TimelineEntry({
             <div className="h-px bg-border" />
             <div className="p-6">
               <div className="rounded-lg overflow-hidden border border-border bg-muted/30 flex items-center justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <WoundImage
                   src={assessment.image_url}
-                  alt={`Wound assessment from ${format(new Date(assessment.created_at), "MMM d, yyyy")}`}
+                  alt={`Wound assessment from ${format(parseISO(assessment.created_at), "MMM d, yyyy")}`}
                   className="max-h-56 object-contain w-full"
                 />
               </div>
@@ -383,24 +384,5 @@ function TimelineEntry({
         )}
       </div>
     </div>
-  );
-}
-
-function UrgencyBadge({ level }: { level: string }) {
-  const config: Record<string, string> = {
-    high: "border-destructive/30 text-destructive bg-destructive/5",
-    medium: "border-border text-foreground bg-muted/50",
-    low: "border-border text-muted-foreground bg-muted/30",
-  };
-
-  const classes =
-    config[level] ?? "border-border text-muted-foreground bg-muted/30";
-
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize ${classes}`}
-    >
-      {level}
-    </span>
   );
 }

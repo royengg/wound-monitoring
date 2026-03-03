@@ -17,8 +17,10 @@ import {
 import { ArrowRight, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo } from "react";
-import { formatDistanceToNow, differenceInDays, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
 import type { AssessmentResult } from "@/lib/types";
+import { UrgencyBadge } from "@/components/urgency-badge";
+import { timeAgo, getDaysPostOp } from "@/lib/date-utils";
 
 const URGENCY_ORDER: Record<string, number> = {
   high: 0,
@@ -307,12 +309,10 @@ export default function DashboardPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground font-mono tabular-nums">
-                      <DaysPostOp date={patient.surgery_date} />
+                      <span>{getDaysPostOp(patient.surgery_date).label}</span>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(patient.created_at), {
-                        addSuffix: true,
-                      })}
+                      {timeAgo(patient.created_at)}
                     </TableCell>
                     <TableCell className="text-right">
                       <Link
@@ -381,7 +381,7 @@ export default function DashboardPage() {
                     loading={isAssessmentsLoading}
                   />
                   <span className="text-xs text-muted-foreground font-mono tabular-nums">
-                    <DaysPostOp date={patient.surgery_date} />
+                    {getDaysPostOp(patient.surgery_date).label}
                   </span>
                 </div>
                 <p className="text-sm font-medium">{patient.name}</p>
@@ -390,9 +390,7 @@ export default function DashboardPage() {
                     {patient.surgery_type}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(patient.created_at), {
-                      addSuffix: true,
-                    })}
+                    {timeAgo(patient.created_at)}
                   </span>
                 </div>
               </Link>
@@ -426,9 +424,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between mt-3 gap-2">
                   <UrgencyBadge level={a.urgency_level} />
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {formatDistanceToNow(new Date(a.created_at), {
-                      addSuffix: true,
-                    })}
+                    {timeAgo(a.created_at)}
                   </span>
                 </div>
               </Link>
@@ -438,55 +434,4 @@ export default function DashboardPage() {
       )}
     </div>
   );
-}
-
-/* ── Sub-components ────────────────────────────────── */
-
-function UrgencyBadge({
-  level,
-  loading,
-}: {
-  level?: string;
-  loading?: boolean;
-}) {
-  if (loading) return <Skeleton className="h-5 w-14 rounded-full" />;
-
-  const config: Record<string, { className: string; label: string }> = {
-    high: {
-      className: "bg-destructive/10 text-destructive",
-      label: "High",
-    },
-    medium: {
-      className: "bg-foreground/[0.06] text-foreground",
-      label: "Medium",
-    },
-    low: {
-      className: "bg-muted text-muted-foreground",
-      label: "Low",
-    },
-  };
-
-  const { className, label } = level && config[level]
-    ? config[level]
-    : { className: "bg-muted text-muted-foreground/60", label: "New" };
-
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${className}`}
-    >
-      {label}
-    </span>
-  );
-}
-
-function DaysPostOp({ date }: { date: string }) {
-  try {
-    const days = differenceInDays(new Date(), parseISO(date));
-    if (days < 0) return <span>{Math.abs(days)}d pre-op</span>;
-    if (days === 0) return <span>Today</span>;
-    if (days === 1) return <span>1d post-op</span>;
-    return <span>{days}d post-op</span>;
-  } catch {
-    return <span>{"\u2014"}</span>;
-  }
 }

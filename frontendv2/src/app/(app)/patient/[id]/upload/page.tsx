@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -65,14 +65,31 @@ export default function UploadAssessmentPage() {
 
   /* ── File handling ──────────────────────────────────── */
 
-  const handleFile = useCallback((selectedFile: File) => {
-    const error = validateFile(selectedFile);
-    if (error) {
-      toast.error(error);
-      return;
-    }
-    setFile(selectedFile);
-    setPreviewUrl(URL.createObjectURL(selectedFile));
+  const handleFile = useCallback(
+    (selectedFile: File) => {
+      const error = validateFile(selectedFile);
+      if (error) {
+        toast.error(error);
+        return;
+      }
+      // Revoke previous blob URL to prevent memory leak
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      setFile(selectedFile);
+      setPreviewUrl(URL.createObjectURL(selectedFile));
+    },
+    [previewUrl],
+  );
+
+  // Clean up blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -393,7 +410,7 @@ export default function UploadAssessmentPage() {
                       />
                     </div>
                     <div>
-                      <p className="text-sm font-medium truncate max-w-[240px]">
+                      <p className="text-sm font-medium truncate max-w-[min(240px,50vw)]">
                         {file?.name}
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -407,6 +424,9 @@ export default function UploadAssessmentPage() {
                     type="button"
                     className="text-muted-foreground hover:text-foreground"
                     onClick={() => {
+                      if (previewUrl) {
+                        URL.revokeObjectURL(previewUrl);
+                      }
                       setFile(null);
                       setPreviewUrl(null);
                       if (fileInputRef.current) {

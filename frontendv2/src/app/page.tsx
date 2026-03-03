@@ -33,7 +33,7 @@ export default function LandingPage() {
             <p className="text-xs font-medium text-primary tracking-widest uppercase mb-8">
               Wound Monitoring System
             </p>
-            <h1 className="text-[2.5rem] leading-[1.1] sm:text-5xl md:text-6xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-[2rem] leading-[1.1] sm:text-5xl md:text-6xl font-semibold tracking-tight text-foreground">
               After discharge, wound complications go undetected.
             </h1>
             <p className="mt-8 text-lg text-muted-foreground leading-relaxed max-w-2xl">
@@ -124,7 +124,7 @@ export default function LandingPage() {
                 then Claude provides structured clinical analysis with
                 photographic wound assessment scoring.
               </p>
-              <div className="grid grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <div>
                   <p className="text-2xl font-semibold font-mono">
                     /10
@@ -229,7 +229,7 @@ export default function LandingPage() {
             How It Works
           </p>
 
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-x-8 gap-y-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-x-8 gap-y-10">
             {[
               {
                 step: "01",
