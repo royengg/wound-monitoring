@@ -4,40 +4,28 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { getPatient, getAssessments, triggerVoiceCall } from "@/lib/api";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { formatDistanceToNow, format } from "date-fns";
+import {
+  formatDistanceToNow,
+  format,
+  differenceInDays,
+  parseISO,
+} from "date-fns";
 import {
   AlertCircle,
-  Calendar,
+  ArrowLeft,
   PhoneCall,
   UploadCloud,
   Activity,
-  Clock,
   AlertTriangle,
-  CheckCircle2,
-  ListChecks,
-  Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 
-export default function PatientHomePage() {
+export default function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
 
-  // Fetch Patient Details
   const {
     data: patient,
     isLoading: isPatientLoading,
@@ -47,24 +35,18 @@ export default function PatientHomePage() {
     queryFn: () => getPatient(id),
   });
 
-  // Fetch Latest Assessments
   const { data: assessments, isLoading: isAssessmentsLoading } = useQuery({
     queryKey: ["assessments", id],
     queryFn: () => getAssessments(id),
   });
 
-  // Call Voice Agent Mutation
   const callMutation = useMutation({
     mutationFn: (patientId: string) => triggerVoiceCall(patientId),
-    onSuccess: (data) => {
-      toast.success("Voice call initiated!");
-      console.log("Call response:", data);
+    onSuccess: () => {
+      toast.success("Voice call initiated.");
     },
-    onError: (error) => {
-      console.error(error);
-      toast.error(
-        "Failed to initiate voice call. Ensure ElevenLabs is configured.",
-      );
+    onError: () => {
+      toast.error("Failed to initiate voice call.");
     },
   });
 
@@ -77,391 +59,503 @@ export default function PatientHomePage() {
           Could not load details for this patient.
         </p>
         <Button asChild variant="outline">
-          <a href="/dashboard">Return to Dashboard</a>
+          <Link href="/dashboard">Return to Dashboard</Link>
         </Button>
       </div>
     );
   }
 
-  // Derived state
   const latestAssessment =
     assessments && assessments.length > 0 ? assessments[0] : null;
-  const urgencyColor =
-    latestAssessment?.urgency_level === "high"
-      ? "destructive"
-      : latestAssessment?.urgency_level === "medium"
-        ? "secondary"
-        : "default";
+  const dataReady = !isPatientLoading && !isAssessmentsLoading;
 
   return (
-    <div className="flex flex-col gap-6 max-w-5xl mx-auto w-full">
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="flex flex-col gap-10">
+      {/* ── Back Link ──────────────────────────────────── */}
+      <Link
+        href="/dashboard"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Back to Dashboard
+      </Link>
+
+      {/* ── Header ─────────────────────────────────────── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between -mt-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
+          {isPatientLoading ? (
+            <>
+              <Skeleton className="h-8 w-48 mb-2" />
+              <Skeleton className="h-5 w-64" />
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-semibold tracking-tight">
+                {patient?.name}
+              </h1>
+              <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                <span>
+                  {patient?.age} yrs
+                  {patient?.gender ? ` · ${patient.gender}` : ""}
+                </span>
+                <span>·</span>
+                <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs font-normal">
+                  {patient?.surgery_type}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/patient/${id}/timeline`}>
+              <Activity className="mr-1.5 h-3.5 w-3.5" />
+              Timeline
+            </Link>
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => callMutation.mutate(id)}
+            disabled={callMutation.isPending || isPatientLoading}
+          >
+            <PhoneCall className="mr-1.5 h-3.5 w-3.5" />
+            {callMutation.isPending ? "Calling..." : "Call Patient"}
+          </Button>
+          <Button asChild size="sm">
+            <Link href={`/patient/${id}/upload`}>
+              <UploadCloud className="mr-1.5 h-3.5 w-3.5" />
+              New Upload
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      {/* ── Overview Stats ─────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="border border-border rounded-lg p-6">
+          <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase">
+            Healing
+          </p>
+          {!dataReady ? (
+            <Skeleton className="mt-3 h-10 w-20" />
+          ) : latestAssessment ? (
+            <p className="mt-3 text-4xl font-semibold tracking-tighter font-mono">
+              {latestAssessment.healing_score.toFixed(1)}
+              <span className="text-lg font-normal text-muted-foreground">
+                /10
+              </span>
+            </p>
+          ) : (
+            <p className="mt-3 text-4xl font-semibold tracking-tighter font-mono">
+              {"\u2014"}
+            </p>
+          )}
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            {latestAssessment ? "Latest healing score" : "No assessment yet"}
+          </p>
+        </div>
+
+        <div className="border border-border rounded-lg p-6">
+          <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase">
+            Urgency
+          </p>
+          {!dataReady ? (
+            <Skeleton className="mt-3 h-10 w-20" />
+          ) : latestAssessment ? (
+            <UrgencyText level={latestAssessment.urgency_level} />
+          ) : (
+            <p className="mt-3 text-4xl font-semibold tracking-tighter font-mono">
+              {"\u2014"}
+            </p>
+          )}
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            {latestAssessment ? "Current urgency level" : "Awaiting assessment"}
+          </p>
+        </div>
+
+        <div className="border border-border rounded-lg p-6">
+          <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase">
+            Post-Op
+          </p>
+          {!dataReady ? (
+            <Skeleton className="mt-3 h-10 w-14" />
+          ) : (
+            <p className="mt-3 text-4xl font-semibold tracking-tighter font-mono">
+              <DaysPostOpValue date={patient?.surgery_date} />
+            </p>
+          )}
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            {patient?.surgery_date
+              ? format(new Date(patient.surgery_date), "MMM d, yyyy")
+              : "Surgery date not set"}
+          </p>
+        </div>
+      </div>
+
+      {/* ── Patient Info + Latest Assessment ────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Patient Information */}
+        <div className="md:col-span-1">
+          <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-4">
+            Patient Information
+          </p>
+          <div className="border border-border rounded-lg">
             {isPatientLoading ? (
-              <Skeleton className="h-9 w-48" />
-            ) : (
-              patient?.name
-            )}
-          </h1>
-          <div className="flex items-center gap-2 mt-2 text-muted-foreground">
-            {isPatientLoading ? (
-              <Skeleton className="h-5 w-32" />
+              <div className="p-6 space-y-4">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
             ) : (
               <>
-                <Badge variant="outline">{patient?.surgery_type}</Badge>
-                <span>•</span>
-                <span>
-                  {patient?.age} yrs, {patient?.gender}
-                </span>
+                <InfoRow label="Phone" value={patient?.phone ?? "N/A"} />
+                <div className="h-px bg-border" />
+                <InfoRow
+                  label="Surgery Date"
+                  value={
+                    patient?.surgery_date
+                      ? format(new Date(patient.surgery_date), "MMM d, yyyy")
+                      : "N/A"
+                  }
+                />
+                <div className="h-px bg-border" />
+                <InfoRow
+                  label="Wound Location"
+                  value={patient?.wound_location || "Not specified"}
+                />
+                <div className="h-px bg-border" />
+                <InfoRow
+                  label="Language"
+                  value={(
+                    patient?.language_preference || "EN"
+                  ).toUpperCase()}
+                />
+                {patient?.risk_factors &&
+                  patient.risk_factors.length > 0 && (
+                    <>
+                      <div className="h-px bg-border" />
+                      <div className="px-6 py-4">
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Risk Factors
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {patient.risk_factors.map((factor, i) => (
+                            <span
+                              key={i}
+                              className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
+                            >
+                              {factor}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
               </>
             )}
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline">
-            <a href={`/patient/${id}/timeline`}>
-              <Activity className="mr-2 h-4 w-4" />
-              Timeline
-            </a>
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => callMutation.mutate(id)}
-            disabled={callMutation.isPending || isPatientLoading}
-          >
-            <PhoneCall className="mr-2 h-4 w-4" />
-            {callMutation.isPending ? "Calling..." : "Call Patient"}
-          </Button>
-          <Button asChild>
-            <a href={`/patient/${id}/upload`}>
-              <UploadCloud className="mr-2 h-4 w-4" />
-              New Upload
-            </a>
-          </Button>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Patient Details Card */}
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-lg">Patient Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {isPatientLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-full" />
-              </div>
-            ) : (
-              <>
-                <div className="flex items-start justify-between">
-                  <span className="text-muted-foreground text-sm">Phone</span>
-                  <span className="font-medium text-sm text-right">
-                    {patient?.phone}
-                  </span>
-                </div>
-                <Separator />
-                <div className="flex items-start justify-between">
-                  <span className="text-muted-foreground text-sm">
-                    Surgery Date
-                  </span>
-                  <span className="font-medium text-sm text-right">
-                    {patient?.surgery_date
-                      ? format(new Date(patient.surgery_date), "MMM d, yyyy")
-                      : "N/A"}
-                  </span>
-                </div>
-                <Separator />
-                <div className="flex items-start justify-between">
-                  <span className="text-muted-foreground text-sm">
-                    Wound Location
-                  </span>
-                  <span className="font-medium text-sm text-right">
-                    {patient?.wound_location || "Not specified"}
-                  </span>
-                </div>
-                <Separator />
-                <div className="flex items-start justify-between">
-                  <span className="text-muted-foreground text-sm">
-                    Language
-                  </span>
-                  <span className="font-medium text-sm text-right uppercase">
-                    {patient?.language_preference || "EN"}
-                  </span>
-                </div>
-
-                {patient?.risk_factors && patient.risk_factors.length > 0 && (
-                  <>
-                    <Separator />
-                    <div className="space-y-2">
-                      <span className="text-muted-foreground text-sm">
-                        Risk Factors
-                      </span>
-                      <div className="flex flex-wrap gap-1">
-                        {patient.risk_factors.map((factor, i) => (
-                          <Badge
-                            key={i}
-                            variant="secondary"
-                            className="text-xs font-normal"
-                          >
-                            {factor}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </>
+        {/* Latest Assessment */}
+        <div className="md:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase">
+              Latest Assessment
+            </p>
+            {latestAssessment && (
+              <p className="text-xs text-muted-foreground">
+                {formatDistanceToNow(
+                  new Date(latestAssessment.created_at),
+                  { addSuffix: true },
                 )}
-              </>
+              </p>
             )}
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Latest Assessment Summary */}
-        <div className="md:col-span-2 space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <div className="space-y-1">
-                <CardTitle className="text-lg">Latest Assessment</CardTitle>
-                <CardDescription>
-                  {isAssessmentsLoading ? (
-                    <Skeleton className="h-4 w-32" />
-                  ) : latestAssessment ? (
-                    `Analyzed ${formatDistanceToNow(new Date(latestAssessment.created_at), { addSuffix: true })}`
-                  ) : (
-                    "No assessments recorded yet."
-                  )}
-                </CardDescription>
+          {isAssessmentsLoading ? (
+            <div className="border border-border rounded-lg p-6 space-y-4">
+              <Skeleton className="h-48 w-full rounded-lg" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+              <div className="flex gap-2">
+                <Skeleton className="h-6 w-16 rounded-full" />
+                <Skeleton className="h-6 w-16 rounded-full" />
               </div>
-              {latestAssessment && (
-                <Badge variant={urgencyColor as any} className="capitalize">
-                  {latestAssessment.urgency_level} Urgency
-                </Badge>
+            </div>
+          ) : latestAssessment ? (
+            <div className="border border-border rounded-lg">
+              {/* Wound Image */}
+              {latestAssessment.image_url && (
+                <>
+                  <div className="p-6">
+                    <div className="rounded-lg overflow-hidden border border-border bg-muted/30 flex items-center justify-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={latestAssessment.image_url}
+                        alt="Latest wound assessment"
+                        className="max-h-72 object-contain w-full"
+                      />
+                    </div>
+                  </div>
+                  <div className="h-px bg-border" />
+                </>
               )}
-            </CardHeader>
-            <CardContent>
-              {isAssessmentsLoading ? (
-                <div className="space-y-4">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-2 w-full" />
-                  <div className="flex gap-2">
-                    <Skeleton className="h-6 w-16" />
-                    <Skeleton className="h-6 w-16" />
-                  </div>
+
+              {/* Summary */}
+              <div className="px-6 py-5">
+                <p className="text-sm leading-relaxed">
+                  {latestAssessment.summary}
+                </p>
+              </div>
+              <div className="h-px bg-border" />
+
+              {/* Infection + Tissue Types */}
+              <div className="px-6 py-5 flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground w-16 shrink-0">
+                    Infection
+                  </span>
+                  <InfectionBadge
+                    status={latestAssessment.infection_status}
+                  />
                 </div>
-              ) : latestAssessment ? (
-                <div className="space-y-6">
-                  {/* Wound Image */}
-                  {latestAssessment.image_url && (
-                    <div className="space-y-2">
-                      <span className="text-sm font-medium flex items-center gap-2">
-                        <ImageIcon className="h-4 w-4" />
-                        Wound Photo
-                      </span>
-                      <div className="rounded-lg overflow-hidden border border-border bg-muted/50 flex items-center justify-center">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={latestAssessment.image_url}
-                          alt="Latest wound assessment"
-                          className="max-h-64 object-contain"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Healing Score + Days Post-Op */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Healing Score</span>
-                      <div className="flex items-center gap-3">
-                        {latestAssessment.days_post_op != null && (
-                          <span className="text-xs text-muted-foreground">
-                            Day {latestAssessment.days_post_op} post-op
-                          </span>
-                        )}
-                        <span className="font-bold">
-                          {latestAssessment.healing_score}/10
-                        </span>
-                      </div>
-                    </div>
-                    {/* Linear mapping 0-10 -> 0-100 */}
-                    <Progress
-                      value={latestAssessment.healing_score * 10}
-                      className="h-3"
-                    />
-                  </div>
-
-                  {/* Summary Text */}
-                  <p className="text-sm">{latestAssessment.summary}</p>
-
-                  {/* Badges / Classification */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground w-20">
-                        Infection:
-                      </span>
-                      <Badge
-                        variant={
-                          latestAssessment.infection_status !== "none"
-                            ? "destructive"
-                            : "outline"
-                        }
-                        className="font-normal capitalize"
-                      >
-                        {latestAssessment.infection_status || "Unknown"}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-muted-foreground w-20">
-                        Tissue:
-                      </span>
-                      {latestAssessment.tissue_types.map((t, idx) => (
-                        <Badge
-                          key={idx}
-                          variant="secondary"
-                          className="font-normal"
+                {latestAssessment.tissue_types.length > 0 && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground w-16 shrink-0">
+                      Tissue
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {latestAssessment.tissue_types.map((t, i) => (
+                        <span
+                          key={i}
+                          className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground capitalize"
                         >
                           {t}
-                        </Badge>
+                        </span>
                       ))}
                     </div>
                   </div>
-
-                  {/* Alerts for Anomalies */}
-                  {latestAssessment.anomalies &&
-                    latestAssessment.anomalies.length > 0 && (
-                      <Alert variant="destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Attention Required</AlertTitle>
-                        <AlertDescription className="mt-2 flex flex-col gap-1">
-                          {latestAssessment.anomalies.map((a, i) => (
-                            <span
-                              key={i}
-                              className="text-xs flex items-center gap-2"
-                            >
-                              <div className="h-1 w-1 bg-destructive rounded-full" />
-                              {a}
-                            </span>
-                          ))}
-                        </AlertDescription>
-                      </Alert>
-                    )}
-
-                  {/* Recommendations */}
-                  {latestAssessment.recommendations &&
-                    latestAssessment.recommendations.length > 0 && (
-                      <div className="space-y-3">
-                        <span className="text-sm font-medium flex items-center gap-2">
-                          <ListChecks className="h-4 w-4" />
-                          Recommendations
-                        </span>
-                        <ul className="space-y-2">
-                          {latestAssessment.recommendations.map((rec, i) => (
-                            <li
-                              key={i}
-                              className="text-sm flex items-start gap-2"
-                            >
-                              <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                              <span>{rec}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                  {/* PWAT Scores */}
-                  {latestAssessment.pwat_scores && (
-                    <div className="space-y-3">
-                      <span className="text-sm font-medium">
-                        PWAT Scores (Total:{" "}
-                        {latestAssessment.pwat_scores.total_score ?? "N/A"}/32)
-                      </span>
-                      <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                        {[
-                          {
-                            label: "Size",
-                            value: latestAssessment.pwat_scores.size,
-                            max: 4,
-                          },
-                          {
-                            label: "Depth",
-                            value: latestAssessment.pwat_scores.depth,
-                            max: 4,
-                          },
-                          {
-                            label: "Necrotic Tissue Type",
-                            value:
-                              latestAssessment.pwat_scores.necrotic_tissue_type,
-                            max: 4,
-                          },
-                          {
-                            label: "Necrotic Tissue Amount",
-                            value:
-                              latestAssessment.pwat_scores
-                                .necrotic_tissue_amount,
-                            max: 4,
-                          },
-                          {
-                            label: "Granulation Type",
-                            value:
-                              latestAssessment.pwat_scores
-                                .granulation_tissue_type,
-                            max: 4,
-                          },
-                          {
-                            label: "Granulation Amount",
-                            value:
-                              latestAssessment.pwat_scores
-                                .granulation_tissue_amount,
-                            max: 4,
-                          },
-                          {
-                            label: "Edges",
-                            value: latestAssessment.pwat_scores.edges,
-                            max: 4,
-                          },
-                          {
-                            label: "Periulcer Skin",
-                            value:
-                              latestAssessment.pwat_scores
-                                .periulcer_skin_viability,
-                            max: 2,
-                          },
-                        ].map((item) => (
-                          <div
-                            key={item.label}
-                            className="flex items-center justify-between"
-                          >
-                            <span className="text-muted-foreground">
-                              {item.label}
-                            </span>
-                            <span className="font-medium">
-                              {item.value}/{item.max}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed rounded-lg border-muted">
-                  <UploadCloud className="h-8 w-8 text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Upload the first wound photo to generate an AI assessment.
-                  </p>
-                  <Button asChild variant="outline" size="sm">
-                    <a href={`/patient/${id}/upload`}>Upload Photo</a>
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Empty state */
+            <div className="border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center py-12 text-center">
+              <UploadCloud className="h-8 w-8 text-muted-foreground/60 mb-3" />
+              <p className="text-sm text-muted-foreground mb-4">
+                Upload the first wound photo to generate an AI assessment.
+              </p>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/patient/${id}/upload`}>Upload Photo</Link>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* ── Anomalies ──────────────────────────────────── */}
+      {latestAssessment?.anomalies &&
+        latestAssessment.anomalies.length > 0 && (
+          <section>
+            <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-4">
+              Anomalies
+            </p>
+            <div className="border border-destructive/20 bg-destructive/[0.03] rounded-lg px-6 py-5">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                <div className="flex flex-col gap-2">
+                  {latestAssessment.anomalies.map((anomaly, i) => (
+                    <p key={i} className="text-sm">
+                      {anomaly}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+      {/* ── Recommendations ────────────────────────────── */}
+      {latestAssessment?.recommendations &&
+        latestAssessment.recommendations.length > 0 && (
+          <section>
+            <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-4">
+              Recommendations
+            </p>
+            <div className="border border-border rounded-lg">
+              {latestAssessment.recommendations.map((rec, i) => (
+                <div key={i}>
+                  {i > 0 && <div className="h-px bg-border" />}
+                  <div className="px-6 py-4 flex items-start gap-4">
+                    <span className="text-xs font-mono text-muted-foreground tabular-nums mt-0.5 shrink-0 w-5 text-right">
+                      {i + 1}
+                    </span>
+                    <p className="text-sm">{rec}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+      {/* ── PWAT Scores ────────────────────────────────── */}
+      {latestAssessment?.pwat_scores && (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase">
+              PWAT Scores
+            </p>
+            <p className="text-sm font-mono tabular-nums">
+              <span className="font-semibold">
+                {latestAssessment.pwat_scores.total_score ?? "N/A"}
+              </span>
+              <span className="text-muted-foreground">/32</span>
+            </p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border border border-border rounded-lg overflow-hidden">
+            {[
+              {
+                label: "Size",
+                value: latestAssessment.pwat_scores.size,
+                max: 4,
+              },
+              {
+                label: "Depth",
+                value: latestAssessment.pwat_scores.depth,
+                max: 4,
+              },
+              {
+                label: "Necrotic Type",
+                value: latestAssessment.pwat_scores.necrotic_tissue_type,
+                max: 4,
+              },
+              {
+                label: "Necrotic Amt",
+                value: latestAssessment.pwat_scores.necrotic_tissue_amount,
+                max: 4,
+              },
+              {
+                label: "Gran. Type",
+                value: latestAssessment.pwat_scores.granulation_tissue_type,
+                max: 4,
+              },
+              {
+                label: "Gran. Amt",
+                value: latestAssessment.pwat_scores.granulation_tissue_amount,
+                max: 4,
+              },
+              {
+                label: "Edges",
+                value: latestAssessment.pwat_scores.edges,
+                max: 4,
+              },
+              {
+                label: "Periulcer Skin",
+                value:
+                  latestAssessment.pwat_scores.periulcer_skin_viability,
+                max: 2,
+              },
+            ].map((item) => (
+              <div key={item.label} className="bg-background p-5">
+                <p className="text-xs text-muted-foreground mb-2">
+                  {item.label}
+                </p>
+                <p className="text-xl font-semibold tracking-tighter font-mono">
+                  {item.value}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    /{item.max}
+                  </span>
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
+}
+
+/* ── Sub-components ────────────────────────────────────── */
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between px-6 py-4">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium text-right">{value}</span>
+    </div>
+  );
+}
+
+function UrgencyText({ level }: { level: string }) {
+  const config: Record<string, { className: string; label: string }> = {
+    high: { className: "text-destructive", label: "High" },
+    medium: { className: "text-foreground", label: "Medium" },
+    low: { className: "text-muted-foreground", label: "Low" },
+  };
+
+  const { className, label } = config[level] ?? {
+    className: "text-muted-foreground",
+    label: "Unknown",
+  };
+
+  return (
+    <p
+      className={`mt-3 text-4xl font-semibold tracking-tighter font-mono ${className}`}
+    >
+      {label}
+    </p>
+  );
+}
+
+function InfectionBadge({ status }: { status?: string | null }) {
+  const isInfected = status && status !== "none";
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${
+        isInfected
+          ? "bg-destructive/10 text-destructive"
+          : "bg-muted text-muted-foreground"
+      }`}
+    >
+      {status || "Unknown"}
+    </span>
+  );
+}
+
+function DaysPostOpValue({ date }: { date?: string }) {
+  if (!date) return <>{"\u2014"}</>;
+  try {
+    const days = differenceInDays(new Date(), parseISO(date));
+    if (days < 0)
+      return (
+        <>
+          {Math.abs(days)}
+          <span className="text-lg font-normal text-muted-foreground ml-0.5">
+            d pre-op
+          </span>
+        </>
+      );
+    if (days === 0)
+      return (
+        <>
+          0
+          <span className="text-lg font-normal text-muted-foreground ml-0.5">
+            today
+          </span>
+        </>
+      );
+    return (
+      <>
+        {days}
+        <span className="text-lg font-normal text-muted-foreground ml-0.5">
+          d
+        </span>
+      </>
+    );
+  } catch {
+    return <>{"\u2014"}</>;
+  }
 }
