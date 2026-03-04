@@ -24,6 +24,7 @@ class Settings(BaseSettings):
 
     sns_alert_topic_arn: str = ""
 
+    app_root: str = ""  # e.g. "/bharatai" for serving under a sub-path
     debug: bool = True
     cors_origins: str = "http://localhost:5173"
 

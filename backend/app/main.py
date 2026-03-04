@@ -5,6 +5,7 @@ from app.config import get_settings
 from app.routers import patients, assessments, voice
 
 settings = get_settings()
+root = settings.app_root.rstrip("/")
 
 app = FastAPI(
     title="API",
@@ -20,16 +21,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(patients.router, prefix="/api/patients", tags=["Patients"])
-app.include_router(assessments.router, prefix="/api/assessments", tags=["Assessments"])
-app.include_router(voice.router, prefix="/api/voice", tags=["Voice Agent"])
+app.include_router(patients.router, prefix=f"{root}/api/patients", tags=["Patients"])
+app.include_router(assessments.router, prefix=f"{root}/api/assessments", tags=["Assessments"])
+app.include_router(voice.router, prefix=f"{root}/api/voice", tags=["Voice Agent"])
 
 
-@app.get("/api/health", tags=["Health"])
+@app.get(f"{root}/api/health", tags=["Health"])
 async def health_check():
     return {"status": "ok", "service": "api"}
 
 
-@app.get("/", tags=["Health"])
-async def root():
+@app.get(f"{root}/", tags=["Health"])
+async def root_check():
     return {"message": "API is running. Visit /docs for API documentation."}
