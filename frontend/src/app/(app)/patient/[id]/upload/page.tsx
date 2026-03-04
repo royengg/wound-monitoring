@@ -62,6 +62,7 @@ export default function UploadAssessmentPage() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [processingStep, setProcessingStep] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const stepTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   /* ── File handling ──────────────────────────────────── */
 
@@ -82,12 +83,13 @@ export default function UploadAssessmentPage() {
     [previewUrl],
   );
 
-  // Clean up blob URL on unmount
+  // Clean up blob URL and step timers on unmount
   useEffect(() => {
     return () => {
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
       }
+      stepTimersRef.current.forEach(clearTimeout);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -131,11 +133,13 @@ export default function UploadAssessmentPage() {
   const uploadMutation = useMutation({
     mutationFn: async (uploadFile: File) => {
       setProcessingStep(0);
+      stepTimersRef.current.forEach(clearTimeout);
 
       // Simulate a brief upload phase before the real call
       // (the API call itself covers upload + AI processing)
       const stepTimer = setTimeout(() => setProcessingStep(1), 1500);
       const stepTimer2 = setTimeout(() => setProcessingStep(2), 4000);
+      stepTimersRef.current = [stepTimer, stepTimer2];
 
       try {
         const result = await uploadWoundPhoto(id, uploadFile);
@@ -143,6 +147,7 @@ export default function UploadAssessmentPage() {
       } finally {
         clearTimeout(stepTimer);
         clearTimeout(stepTimer2);
+        stepTimersRef.current = [];
       }
     },
     onSuccess: () => {
@@ -151,8 +156,7 @@ export default function UploadAssessmentPage() {
       queryClient.invalidateQueries({ queryKey: ["patient", id] });
       router.push(`/patient/${id}`);
     },
-    onError: (error) => {
-      console.error(error);
+    onError: () => {
       setProcessingStep(0);
       toast.error(
         "Failed to upload assessment. Ensure the backend AI agents are running.",
@@ -188,7 +192,7 @@ export default function UploadAssessmentPage() {
 
         <div className="border border-border rounded-lg">
           <div className="p-6">
-            <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-6">
+            <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-5">
               Analysis Progress
             </p>
             <div className="flex flex-col gap-6">
@@ -321,6 +325,7 @@ export default function UploadAssessmentPage() {
               <div
                 role="button"
                 tabIndex={0}
+                aria-label="Upload wound photograph"
                 onClick={() => fileInputRef.current?.click()}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
@@ -360,6 +365,7 @@ export default function UploadAssessmentPage() {
                   className="hidden"
                   accept="image/jpeg,image/png,image/webp"
                   onChange={handleFileChange}
+                  aria-label="Select wound photograph"
                 />
               </div>
             ) : (
@@ -378,7 +384,8 @@ export default function UploadAssessmentPage() {
                     alt="Wound preview"
                     className="max-h-80 object-contain"
                   />
-                  <div className="absolute inset-0 bg-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  {/* Desktop: hover overlay */}
+                  <div className="absolute inset-0 bg-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex items-center justify-center">
                     <Button
                       variant="secondary"
                       size="sm"
@@ -388,17 +395,10 @@ export default function UploadAssessmentPage() {
                       <ImageIcon className="w-3.5 h-3.5 mr-1.5" />
                       Replace Image
                     </Button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      className="hidden"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={handleFileChange}
-                    />
                   </div>
                 </div>
 
-                {/* File info */}
+                {/* File info + actions */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-lg overflow-hidden border border-border bg-muted/30 shrink-0">
@@ -418,24 +418,36 @@ export default function UploadAssessmentPage() {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    type="button"
-                    className="text-muted-foreground hover:text-foreground"
-                    onClick={() => {
-                      if (previewUrl) {
-                        URL.revokeObjectURL(previewUrl);
-                      }
-                      setFile(null);
-                      setPreviewUrl(null);
-                      if (fileInputRef.current) {
-                        fileInputRef.current.value = "";
-                      }
-                    }}
-                  >
-                    Remove
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {/* Mobile: always-visible replace button */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      className="sm:hidden"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Replace
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        if (previewUrl) {
+                          URL.revokeObjectURL(previewUrl);
+                        }
+                        setFile(null);
+                        setPreviewUrl(null);
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = "";
+                        }
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}

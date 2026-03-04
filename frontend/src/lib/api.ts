@@ -4,6 +4,7 @@ import {
   Patient,
   PatientCreate,
   PatientUpdate,
+  VoiceCallRecord,
   VoiceCallResponse,
 } from "./types";
 
@@ -56,6 +57,7 @@ export const uploadWoundPhoto = async (patientId: string, file: File) => {
       headers: {
         "Content-Type": "multipart/form-data",
       },
+      timeout: 120000, // 2 min — AI processing (YOLO + Bedrock) takes longer
     },
   );
   return data;
@@ -77,6 +79,13 @@ export const triggerVoiceCall = async (patientId: string) => {
   const { data } = await api.post<VoiceCallResponse>("/voice/call", {
     patient_id: patientId,
   });
+  return data;
+};
+
+export const getVoiceCalls = async (patientId: string) => {
+  const { data } = await api.get<VoiceCallRecord[]>(
+    `/voice/calls/${patientId}`,
+  );
   return data;
 };
 

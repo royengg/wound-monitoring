@@ -5,7 +5,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Accent line */}
-      <div className="h-[2px] w-full bg-primary" />
+      <div className="h-0.5 w-full bg-primary" />
 
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
@@ -33,7 +33,7 @@ export default function LandingPage() {
             <p className="text-xs font-medium text-primary tracking-widest uppercase mb-8">
               Wound Monitoring System
             </p>
-            <h1 className="text-[2rem] leading-[1.1] sm:text-5xl md:text-6xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-4xl leading-tight sm:text-5xl md:text-6xl font-semibold tracking-tight text-foreground">
               After discharge, wound complications go undetected.
             </h1>
             <p className="mt-8 text-lg text-muted-foreground leading-relaxed max-w-2xl">
@@ -180,11 +180,11 @@ export default function LandingPage() {
                 and historical comparison.
               </p>
               {/* Mini bar chart — CSS only */}
-              <div className="flex items-end gap-[5px] h-10">
+              <div className="flex items-end gap-1.5 h-10">
                 {[20, 28, 35, 45, 52, 64, 75, 88, 100].map((h, i) => (
                   <div
                     key={i}
-                    className={`w-[6px] rounded-sm ${i === 8 ? "bg-primary" : "bg-foreground"} transition-all`}
+                    className={`w-1.5 rounded-sm ${i === 8 ? "bg-primary" : "bg-foreground"} transition-all`}
                     style={{
                       height: `${h}%`,
                       opacity: i === 8 ? 1 : 0.08 + i * 0.08,
@@ -307,7 +307,7 @@ export default function LandingPage() {
                 {[
                   "Claude Sonnet",
                   "YOLOv8",
-                  "ElevenLabs",
+                  "Vapi",
                   "Next.js",
                   "FastAPI",
                   "Python",

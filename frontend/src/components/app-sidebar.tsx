@@ -71,7 +71,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="p-4 text-xs text-muted-foreground text-center">
-        Wound Monitoring MVP
+        Wound Monitoring
       </SidebarFooter>
     </Sidebar>
   );

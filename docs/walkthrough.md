@@ -13,15 +13,15 @@
 │                         │     │                                                  │
 │  PatientHome            │     │  /api/patients    → DynamoDB (patients)          │
 │  PhotoUpload            │     │  /api/assessments → S3 + YOLO + Bedrock + SNS   │
-│  HealingTimeline        │     │  /api/voice       → ElevenLabs (voice calls)    │
+│  HealingTimeline        │     │  /api/voice       → Vapi (voice calls)          │
 │  Dashboard              │     │  /api/health      → health check                │
 └─────────────────────────┘     └──────────────────────────────────────────────────┘
                                      │         │          │          │          │
                                 ┌────┘    ┌────┘    ┌─────┘    ┌─────┘    ┌────┘
                                 ▼         ▼         ▼          ▼          ▼
-                           DynamoDB   Amazon S3  Bedrock   Amazon SNS  ElevenLabs
-                          (patients, (wound-     (Claude   (clinician  (outbound
-                          assessments) photos)   vision)    alerts)    voice calls)
+                            DynamoDB   Amazon S3  Bedrock   Amazon SNS  Vapi
+                           (patients, (wound-     (Claude   (clinician  (outbound
+                           assessments) photos)   vision)    alerts)    voice calls)
 ```
 
 ### Assessment Pipeline & Voice Call Flow
@@ -35,7 +35,7 @@ sequenceDiagram
     participant DB as DynamoDB
     participant AI as Bedrock Claude
     participant SNS as Amazon SNS
-    participant Voice as ElevenLabs
+    participant Voice as Vapi
 
     rect rgb(40, 40, 60)
     Note over App, SNS: Wound Assessment Pipeline
@@ -90,8 +90,9 @@ Uses `pydantic-settings` to load from `.env`:
 | `DYNAMODB_ASSESSMENTS_TABLE`                  | `assessments`                               | DynamoDB table name                        |
 | `BEDROCK_MODEL_ID`                            | `anthropic.claude-sonnet-4-5-20250929-v1:0` | Bedrock model                              |
 | `YOLO_MODEL_PATH`                             | `yolov8n.pt`                                | Path to YOLO weights                       |
-| `ELEVENLABS_API_KEY`                          | —                                           | ElevenLabs API key for voice calls         |
-| `ELEVENLABS_AGENT_ID`                         | —                                           | ElevenLabs Conversational AI agent ID      |
+| `VAPI_API_KEY`                                | —                                           | Vapi private API key for voice calls       |
+| `VAPI_ASSISTANT_ID`                           | —                                           | Vapi voice assistant ID                    |
+| `VAPI_PHONE_NUMBER_ID`                        | —                                           | Vapi phone number ID (BYO SIP trunk)       |
 | `SNS_ALERT_TOPIC_ARN`                         | —                                           | SNS topic ARN for clinician urgency alerts |
 | `CORS_ORIGINS`                                | `http://localhost:5173`                     | Allowed origins                            |
 
@@ -170,7 +171,7 @@ Includes `Decimal↔float` converters since DynamoDB returns `Decimal` objects t
 
 | Method | Path              | What it does                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST` | `/api/voice/call` | Fetches patient + latest assessment. Uses the **Bedrock-generated `voice_agent_script`** stored in the assessment (falling back to a manually built script if absent). Passes the patient's `language_preference` to ElevenLabs. Triggers a live outbound phone call via the ElevenLabs Conversational AI API (`POST /v1/convai/agents/{agent_id}/calls`). Falls back to a simulated response if API keys are missing. |
+| `POST` | `/api/voice/call` | Fetches patient + latest assessment. Uses the **Bedrock-generated `voice_agent_script`** stored in the assessment (falling back to a manually built script if absent). Passes the patient's `language_preference` and dynamic variables to Vapi. Triggers a live outbound phone call via the Vapi API (`POST https://api.vapi.ai/call/phone`). Falls back to a simulated response if API keys are missing. |
 
 ---
 
@@ -288,7 +289,7 @@ Proxies `/api` requests to `http://localhost:8000` during development to avoid C
 | **DynamoDB**   | Table: `assessments` (PK: `assessment_id`) | Assessment results                               |
 | **Bedrock**    | Model: Claude Sonnet                       | Multimodal wound assessment                      |
 | **SNS**        | Topic: `wound-urgency-alerts`              | Clinician alerts on high-urgency assessments     |
-| **ElevenLabs** | Conversational AI Agent                    | Voice call platform (outbound calls to patients) |
+| **Vapi**         | Voice AI Agent (BYO SIP trunk)             | Voice call platform (outbound calls to patients) |
 
 > **Note:** For production, add a Global Secondary Index on `patient_id` in the assessments table to replace the current scan+filter approach.
 

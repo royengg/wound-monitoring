@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { format, differenceInDays, parseISO } from "date-fns";
-import { ArrowLeft, Image as ImageIcon } from "lucide-react";
+import { AlertCircle, ArrowLeft, Image as ImageIcon } from "lucide-react";
 
 import { getAssessments, getPatient } from "@/lib/api";
 import type { AssessmentResult } from "@/lib/types";
@@ -30,12 +30,12 @@ const chartConfig: ChartConfig = {
 export default function PatientTimelinePage() {
   const { id } = useParams<{ id: string }>();
 
-  const { data: patient, isLoading: isPatientLoading } = useQuery({
+  const { data: patient, isLoading: isPatientLoading, isError: isPatientError } = useQuery({
     queryKey: ["patient", id],
     queryFn: () => getPatient(id),
   });
 
-  const { data: assessments, isLoading: isAssessmentsLoading } = useQuery({
+  const { data: assessments, isLoading: isAssessmentsLoading, isError: isAssessmentsError } = useQuery({
     queryKey: ["assessments", id],
     queryFn: () => getAssessments(id),
   });
@@ -65,6 +65,30 @@ export default function PatientTimelinePage() {
       parseISO(sorted[0].created_at),
     );
   })();
+
+  if (isPatientError || isAssessmentsError) {
+    return (
+      <div className="flex flex-col gap-10">
+        <Link
+          href={`/patient/${id}`}
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back to Patient
+        </Link>
+        <div className="flex flex-col items-center justify-center h-[40vh] text-center">
+          <AlertCircle className="h-10 w-10 text-destructive mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Failed to Load Timeline</h2>
+          <p className="text-muted-foreground mb-4">
+            Could not load timeline data. Please try again later.
+          </p>
+          <Button asChild variant="outline">
+            <Link href={`/patient/${id}`}>Return to Patient</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-10">
@@ -165,7 +189,7 @@ export default function PatientTimelinePage() {
       {/* ── Healing Score Chart ────────────────────────── */}
       {isAssessmentsLoading ? (
         <section>
-          <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-4">
+          <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-5">
             Healing Score Trend
           </p>
           <div className="border border-border rounded-lg p-6">
@@ -234,7 +258,7 @@ export default function PatientTimelinePage() {
 
       {/* ── Assessment History ─────────────────────────── */}
       <section>
-        <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-4">
+        <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-5">
           Assessment History
         </p>
 

@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, HTTPException
 from botocore.exceptions import ClientError
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from app.models.schemas import PatientCreate, Patient, PatientUpdate
 from app.services.dynamodb import (
@@ -22,7 +22,7 @@ async def create_patient(data: PatientCreate):
     patient = {
         "patient_id": str(uuid.uuid4()),
         **data.model_dump(),
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
     try:
         put_patient(patient)

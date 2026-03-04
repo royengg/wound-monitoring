@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from botocore.exceptions import ClientError
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from decimal import Decimal
 from app.models.schemas import AssessmentResult
@@ -122,7 +122,7 @@ async def upload_and_assess(
         "wound_location": patient.get("wound_location"),
         "risk_factors": patient.get("risk_factors", []),
         "days_post_op": days_since(
-            patient.get("surgery_date", datetime.utcnow().date().isoformat())
+            patient.get("surgery_date", datetime.now(timezone.utc).date().isoformat())
         ),
     }
 
@@ -143,7 +143,7 @@ async def upload_and_assess(
 
     # 7. Build assessment record
     assessment_id = str(uuid.uuid4())
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
 
     assessment = {
         "assessment_id": assessment_id,

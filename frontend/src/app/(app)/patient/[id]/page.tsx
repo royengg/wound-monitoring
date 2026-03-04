@@ -1,28 +1,45 @@
 "use client";
 
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { getPatient, getAssessments, triggerVoiceCall } from "@/lib/api";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  getPatient,
+  getAssessments,
+  triggerVoiceCall,
+  getVoiceCalls,
+} from "@/lib/api";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import {
   AlertCircle,
   ArrowLeft,
+  Loader2,
   PhoneCall,
   UploadCloud,
   Activity,
   AlertTriangle,
+  ChevronDown,
+  Clock,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { UrgencyText } from "@/components/urgency-badge";
 import { WoundImage } from "@/components/wound-image";
 import { timeAgo, getDaysPostOp } from "@/lib/date-utils";
+import type { VoiceCallRecord } from "@/lib/types";
 
 export default function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
 
   const {
     data: patient,
@@ -38,10 +55,16 @@ export default function PatientDetailPage() {
     queryFn: () => getAssessments(id),
   });
 
+  const { data: voiceCalls, isLoading: isVoiceCallsLoading, isError: isVoiceCallsError } = useQuery({
+    queryKey: ["voiceCalls", id],
+    queryFn: () => getVoiceCalls(id),
+  });
+
   const callMutation = useMutation({
     mutationFn: (patientId: string) => triggerVoiceCall(patientId),
     onSuccess: () => {
       toast.success("Voice call initiated.");
+      queryClient.invalidateQueries({ queryKey: ["voiceCalls", id] });
     },
     onError: () => {
       toast.error("Failed to initiate voice call.");
@@ -118,7 +141,11 @@ export default function PatientDetailPage() {
             onClick={() => callMutation.mutate(id)}
             disabled={callMutation.isPending || isPatientLoading}
           >
-            <PhoneCall className="mr-1.5 h-3.5 w-3.5" />
+            {callMutation.isPending ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <PhoneCall className="mr-1.5 h-3.5 w-3.5" />
+            )}
             {callMutation.isPending ? "Calling..." : "Call Patient"}
           </Button>
           <Button asChild size="sm">
@@ -206,7 +233,7 @@ export default function PatientDetailPage() {
           )}
           <p className="mt-1.5 text-xs text-muted-foreground">
             {patient?.surgery_date
-              ? format(new Date(patient.surgery_date), "MMM d, yyyy")
+              ? format(parseISO(patient.surgery_date), "MMM d, yyyy")
               : "Surgery date not set"}
           </p>
         </div>
@@ -216,7 +243,7 @@ export default function PatientDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Patient Information */}
         <div className="md:col-span-1">
-          <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-4">
+          <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-5">
             Patient Information
           </p>
           <div className="border border-border rounded-lg">
@@ -235,7 +262,7 @@ export default function PatientDetailPage() {
                   label="Surgery Date"
                   value={
                     patient?.surgery_date
-                      ? format(new Date(patient.surgery_date), "MMM d, yyyy")
+                      ? format(parseISO(patient.surgery_date), "MMM d, yyyy")
                       : "N/A"
                   }
                 />
@@ -377,7 +404,7 @@ export default function PatientDetailPage() {
       {latestAssessment?.anomalies &&
         latestAssessment.anomalies.length > 0 && (
           <section>
-            <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-4">
+            <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-5">
               Anomalies
             </p>
             <div className="border border-destructive/20 bg-destructive/[0.03] rounded-lg px-6 py-5">
@@ -399,7 +426,7 @@ export default function PatientDetailPage() {
       {latestAssessment?.recommendations &&
         latestAssessment.recommendations.length > 0 && (
           <section>
-            <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-4">
+            <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-5">
               Recommendations
             </p>
             <div className="border border-border rounded-lg">
@@ -476,7 +503,7 @@ export default function PatientDetailPage() {
                 max: 2,
               },
             ].map((item) => (
-              <div key={item.label} className="bg-background p-5">
+              <div key={item.label} className="bg-background p-6">
                 <p className="text-xs text-muted-foreground mb-2">
                   {item.label}
                 </p>
@@ -491,6 +518,13 @@ export default function PatientDetailPage() {
           </div>
         </section>
       )}
+
+      {/* ── Last Voice Call ─────────────────────────────── */}
+      <VoiceCallSection
+        calls={voiceCalls}
+        isLoading={isVoiceCallsLoading}
+        isError={isVoiceCallsError}
+      />
     </div>
   );
 }
@@ -519,4 +553,205 @@ function InfectionBadge({ status }: { status?: string | null }) {
       {status || "Unknown"}
     </span>
   );
+}
+
+function VoiceCallSection({
+  calls,
+  isLoading,
+  isError,
+}: {
+  calls?: VoiceCallRecord[];
+  isLoading: boolean;
+  isError: boolean;
+}) {
+  const [transcriptOpen, setTranscriptOpen] = useState(false);
+
+  if (isLoading) {
+    return (
+      <section>
+        <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-5">
+          Last Voice Call
+        </p>
+        <div className="border border-border rounded-lg p-6 space-y-4">
+          <Skeleton className="h-5 w-32 rounded-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+        </div>
+      </section>
+    );
+  }
+
+  if (!calls || calls.length === 0) {
+    if (isError) {
+      return (
+        <section>
+          <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-5">
+            Last Voice Call
+          </p>
+          <div className="border border-destructive/20 bg-destructive/[0.03] rounded-lg flex flex-col items-center justify-center py-12 text-center">
+            <AlertCircle className="h-8 w-8 text-destructive/50 mb-3" />
+            <p className="text-base font-medium text-foreground">
+              Failed to load voice calls
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Could not retrieve call history. Please try again later.
+            </p>
+          </div>
+        </section>
+      );
+    }
+    return (
+      <section>
+        <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-5">
+          Last Voice Call
+        </p>
+        <div className="border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center py-12 text-center">
+          <PhoneCall className="h-8 w-8 text-muted-foreground/50 mb-3" />
+          <p className="text-base font-medium text-foreground">
+            No voice calls yet
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Use the &quot;Call Patient&quot; button to initiate a voice call.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  const latestCall = calls[0];
+  const isInProgress =
+    latestCall.status === "initiated" || latestCall.status === "in-progress";
+  const hasEnded = latestCall.status === "ended";
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase">
+          Last Voice Call
+        </p>
+        {latestCall.created_at && (
+          <p className="text-xs text-muted-foreground">
+            {timeAgo(latestCall.created_at)}
+          </p>
+        )}
+      </div>
+
+      <div className="border border-border rounded-lg">
+        {/* Status + Review Badge Row */}
+        <div className="px-6 py-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            {isInProgress ? (
+              <span className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-medium">
+                Call in progress...
+              </span>
+            ) : latestCall.status === "failed" ? (
+              <span className="inline-flex items-center rounded-full bg-destructive/10 text-destructive px-2.5 py-0.5 text-xs font-medium">
+                Call Failed
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full bg-muted text-muted-foreground px-2.5 py-0.5 text-xs font-medium">
+                Completed
+              </span>
+            )}
+
+            {hasEnded && latestCall.supervisor_review_needed != null && (
+              latestCall.supervisor_review_needed ? (
+                <span className="inline-flex items-center rounded-full bg-destructive/10 text-destructive px-2.5 py-0.5 text-xs font-medium">
+                  Review Needed
+                </span>
+              ) : (
+                <span className="inline-flex items-center rounded-full bg-muted text-muted-foreground px-2.5 py-0.5 text-xs font-medium">
+                  No Review Needed
+                </span>
+              )
+            )}
+          </div>
+
+          {/* Duration + Timestamp metadata */}
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            {latestCall.duration_seconds != null && (
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {formatDuration(latestCall.duration_seconds)}
+              </span>
+            )}
+            {latestCall.created_at && (
+              <span>
+                {(() => {
+                  try {
+                    return format(
+                      parseISO(latestCall.created_at),
+                      "MMM d, yyyy 'at' h:mm a",
+                    );
+                  } catch {
+                    return latestCall.created_at;
+                  }
+                })()}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Call Summary */}
+        {hasEnded && latestCall.summary && (
+          <>
+            <div className="h-px bg-border" />
+            <div className="px-6 py-5">
+              <p className="text-xs text-muted-foreground mb-2">Summary</p>
+              <p className="text-sm leading-relaxed">{latestCall.summary}</p>
+            </div>
+          </>
+        )}
+
+        {/* In-progress message */}
+        {isInProgress && (
+          <>
+            <div className="h-px bg-border" />
+            <div className="px-6 py-5">
+              <p className="text-sm text-muted-foreground">
+                The voice call is currently active. Results will appear here once the call ends.
+              </p>
+            </div>
+          </>
+        )}
+
+        {/* Collapsible Transcript */}
+        {hasEnded && latestCall.transcript && (
+          <>
+            <div className="h-px bg-border" />
+            <Collapsible open={transcriptOpen} onOpenChange={setTranscriptOpen}>
+              <CollapsibleTrigger asChild>
+                <button className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-muted/50 transition-colors">
+                  <span className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                    <FileText className="h-3.5 w-3.5" />
+                    Transcript
+                  </span>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${
+                      transcriptOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="h-px bg-border" />
+                <div className="px-6 py-5">
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words font-mono text-muted-foreground">
+                    {latestCall.transcript}
+                  </p>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function formatDuration(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  if (mins === 0) return `${secs}s`;
+  return `${mins}m ${secs}s`;
 }

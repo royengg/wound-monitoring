@@ -39,11 +39,13 @@ import { cn } from "@/lib/utils";
 
 const patientFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  age: z.number().min(0).max(120),
+  age: z.number({ message: "Age is required." }).min(1, { message: "Age must be at least 1." }).max(120, { message: "Age must be at most 120." }),
   gender: z.string().optional(),
   phone: z
     .string()
-    .min(10, { message: "Enter a valid phone number with country code." }),
+    .min(10, { message: "Enter a valid phone number with country code." })
+    .max(15, { message: "Phone number is too long." })
+    .regex(/^\+\d{9,14}$/, { message: "Phone must start with + followed by digits (e.g. +919876543210)." }),
   surgery_type: z.string().min(2, { message: "Surgery type is required." }),
   surgery_date: z.date(),
   wound_location: z.string().optional(),
@@ -79,8 +81,7 @@ export default function AddPatientPage() {
       queryClient.invalidateQueries({ queryKey: ["patients"] });
       router.push("/dashboard");
     },
-    onError: (error) => {
-      console.error(error);
+    onError: () => {
       toast.error(
         "Failed to create patient. Please check the backend connection.",
       );
@@ -162,7 +163,7 @@ export default function AddPatientPage() {
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="age"
@@ -334,6 +335,14 @@ export default function AddPatientPage() {
                           <SelectItem value="en">English</SelectItem>
                           <SelectItem value="hi">Hindi</SelectItem>
                           <SelectItem value="mr">Marathi</SelectItem>
+                          <SelectItem value="ta">Tamil</SelectItem>
+                          <SelectItem value="te">Telugu</SelectItem>
+                          <SelectItem value="bn">Bengali</SelectItem>
+                          <SelectItem value="gu">Gujarati</SelectItem>
+                          <SelectItem value="kn">Kannada</SelectItem>
+                          <SelectItem value="ml">Malayalam</SelectItem>
+                          <SelectItem value="pa">Punjabi</SelectItem>
+                          <SelectItem value="or">Odia</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormDescription>

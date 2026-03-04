@@ -93,7 +93,7 @@ export default function DashboardPage() {
     });
     flat.sort(
       (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        parseISO(b.created_at).getTime() - parseISO(a.created_at).getTime(),
     );
     return flat.slice(0, 5);
   }, [allAssessments, patients]);
@@ -113,7 +113,7 @@ export default function DashboardPage() {
       const oB = URGENCY_ORDER[urgencyByPatient[b.patient_id]] ?? 3;
       if (oA !== oB) return oA - oB;
       return (
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        parseISO(b.created_at).getTime() - parseISO(a.created_at).getTime()
       );
     });
   }, [patients, search, urgencyByPatient]);
@@ -219,6 +219,7 @@ export default function DashboardPage() {
             className="pl-9 h-10"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search patients"
           />
         </div>
 
@@ -402,7 +403,7 @@ export default function DashboardPage() {
       {/* ── Recent Assessments ─────────────────────────── */}
       {!isAssessmentsLoading && recentAssessments.length > 0 && (
         <section>
-          <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-6">
+          <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-5">
             Recent Assessments
           </p>
           <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory sm:mx-0 sm:px-0 sm:snap-none sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
@@ -410,7 +411,7 @@ export default function DashboardPage() {
               <Link
                 key={a.assessment_id}
                 href={`/patient/${a.patient_id}`}
-                className="min-w-[180px] flex-shrink-0 snap-start border border-border rounded-lg p-5 hover:border-foreground/20 transition-colors sm:min-w-0"
+                className="min-w-[180px] flex-shrink-0 snap-start border border-border rounded-lg p-6 hover:border-foreground/20 transition-colors sm:min-w-0"
               >
                 <p className="text-sm font-medium truncate">
                   {a.patientName}

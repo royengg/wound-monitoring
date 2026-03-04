@@ -81,3 +81,16 @@ export interface VoiceCallResponse {
   status: string;
   message: string;
 }
+
+export interface VoiceCallRecord {
+  call_id: string;
+  patient_id: string;
+  conversation_id: string;
+  status: string; // 'initiated' | 'in-progress' | 'ended' | 'failed' | 'simulated'
+  transcript?: string | null;
+  summary?: string | null;
+  supervisor_review_needed?: boolean | null;
+  duration_seconds?: number | null;
+  ended_reason?: string | null;
+  created_at: string;
+}
