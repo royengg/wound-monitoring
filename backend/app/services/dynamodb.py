@@ -15,6 +15,7 @@ dynamodb = boto3.resource(
 )
 patients_table = dynamodb.Table(settings.dynamodb_patients_table)
 assessments_table = dynamodb.Table(settings.dynamodb_assessments_table)
+voice_calls_table = dynamodb.Table(settings.dynamodb_voice_calls_table)
 
 
 # ── Patients ──────────────────────────────────────────
@@ -159,6 +160,75 @@ def delete_assessment(assessment_id: str) -> None:
         logger.error(
             "Failed to delete assessment %s: %s",
             assessment_id,
+            e.response["Error"]["Message"],
+        )
+        raise
+
+
+# ── Voice Calls ──────────────────────────────────────
+
+
+def put_voice_call(call: dict) -> dict:
+    try:
+        voice_calls_table.put_item(Item=call)
+        return call
+    except ClientError as e:
+        logger.error(
+            "Failed to create voice call %s: %s",
+            call.get("call_id"),
+            e.response["Error"]["Message"],
+        )
+        raise
+
+
+def get_voice_calls_by_patient(patient_id: str) -> list[dict]:
+    # Uses scan + filter (works at hackathon scale).
+    try:
+        resp = voice_calls_table.scan(
+            FilterExpression=Attr("patient_id").eq(patient_id),
+        )
+        items = resp.get("Items", [])
+        while "LastEvaluatedKey" in resp:
+            resp = voice_calls_table.scan(
+                FilterExpression=Attr("patient_id").eq(patient_id),
+                ExclusiveStartKey=resp["LastEvaluatedKey"],
+            )
+            items.extend(resp.get("Items", []))
+        items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        return items
+    except ClientError as e:
+        logger.error(
+            "Failed to get voice calls for patient %s: %s",
+            patient_id,
+            e.response["Error"]["Message"],
+        )
+        raise
+
+
+def update_voice_call(call_id: str, updates: dict) -> dict:
+    expr_parts = []
+    expr_names = {}
+    expr_values = {}
+    for i, (key, value) in enumerate(updates.items()):
+        alias = f"#k{i}"
+        placeholder = f":v{i}"
+        expr_parts.append(f"{alias} = {placeholder}")
+        expr_names[alias] = key
+        expr_values[placeholder] = value
+
+    try:
+        resp = voice_calls_table.update_item(
+            Key={"call_id": call_id},
+            UpdateExpression="SET " + ", ".join(expr_parts),
+            ExpressionAttributeNames=expr_names,
+            ExpressionAttributeValues=expr_values,
+            ReturnValues="ALL_NEW",
+        )
+        return resp["Attributes"]
+    except ClientError as e:
+        logger.error(
+            "Failed to update voice call %s: %s",
+            call_id,
             e.response["Error"]["Message"],
         )
         raise

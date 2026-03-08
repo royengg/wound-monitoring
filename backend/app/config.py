@@ -11,17 +11,20 @@ class Settings(BaseSettings):
 
     dynamodb_patients_table: str = "patients"
     dynamodb_assessments_table: str = "assessments"
+    dynamodb_voice_calls_table: str = "voice_calls"
 
     bedrock_model_id: str = "anthropic.claude-sonnet-4-5-20250929-v1:0"
 
     yolo_model_path: str = "wound_yolov8n.pt"
     yolo_confidence_threshold: float = 0.25
 
-    elevenlabs_api_key: str = ""
-    elevenlabs_agent_id: str = ""
+    vapi_api_key: str = ""
+    vapi_assistant_id: str = ""
+    vapi_phone_number_id: str = ""
 
     sns_alert_topic_arn: str = ""
 
+    app_root: str = ""  # e.g. "/bharatai" for serving under a sub-path
     debug: bool = True
     cors_origins: str = "http://localhost:5173"
 

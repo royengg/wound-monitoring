@@ -99,3 +99,16 @@ class VoiceCallResponse(BaseModel):
     patient_id: str
     status: str = "initiated"
     message: str = ""
+
+
+class VoiceCallRecord(BaseModel):
+    call_id: str
+    patient_id: str
+    conversation_id: str
+    status: str = "initiated"  # initiated | in-progress | ended | failed
+    transcript: Optional[str] = None
+    summary: Optional[str] = None
+    supervisor_review_needed: Optional[bool] = None
+    duration_seconds: Optional[float] = None
+    ended_reason: Optional[str] = None
+    created_at: str = ""

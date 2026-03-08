@@ -11,7 +11,7 @@ with a voice agent for patient follow-up calls.
 3. **Layer 2 (Claude via Bedrock)** analyzes the cropped image + patient context to produce a structured assessment — healing score, PWAT sub-scores, infection status, urgency level, recommendations, and a voice agent script
 4. Results are stored in DynamoDB and displayed on the patient dashboard
 5. High-urgency cases trigger SNS alerts to clinicians
-6. A voice agent (ElevenLabs) can call the patient with a personalized update
+6. A voice agent (Vapi) can call the patient with a personalized update
 
 ## Key Metrics
 
@@ -31,8 +31,8 @@ Full metrics, dataset details, benchmark results, and test outcomes in [`docs/me
 
 - Python 3.10+
 - Node.js 18+ & npm
-- AWS account with access to S3, DynamoDB, and Bedrock (Claude Sonnet enabled)
-- (Optional) ElevenLabs API key for voice agent
+- AWS account with access to S3, DynamoDB, and Bedrock
+- (Optional) Vapi account with API key for voice agent and SIP trunk outbound number
 
 ## Setup
 
@@ -42,6 +42,7 @@ Full metrics, dataset details, benchmark results, and test outcomes in [`docs/me
 2. **DynamoDB** — Create two tables:
    - `patients` (partition key: `patient_id`, type String)
    - `assessments` (partition key: `assessment_id`, type String)
+   - `voice_calls` (partition key: `call_id`, type String)
 3. **Bedrock** — Enable Claude Sonnet model access in your region
 4. (Optional) **SNS** — Create a topic for clinician urgency alerts
 5. Copy `backend/.env.example` to `backend/.env` and fill in credentials
@@ -95,8 +96,9 @@ Environment variables in `backend/.env`:
 | `BEDROCK_MODEL_ID` | Bedrock model / inference profile | `apac.anthropic.claude-sonnet-4-20250514-v1:0` |
 | `YOLO_MODEL_PATH` | Path to trained YOLO weights | `wound_yolov8n.pt` |
 | `YOLO_CONFIDENCE_THRESHOLD` | Detection confidence threshold | `0.25` |
-| `ELEVENLABS_API_KEY` | ElevenLabs API key (optional) | — |
-| `ELEVENLABS_AGENT_ID` | ElevenLabs agent ID (optional) | — |
+| `VAPI_API_KEY` | Vapi private API key (optional) | — |
+| `VAPI_ASSISTANT_ID` | Vapi assistant ID (optional) | — |
+| `VAPI_PHONE_NUMBER_ID` | Vapi phone number ID (optional) | — |
 | `SNS_ALERT_TOPIC_ARN` | SNS topic for alerts (optional) | — |
 
 ## Project Structure
